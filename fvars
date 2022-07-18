@@ -1,0 +1,11 @@
+;standard_name;Variable;Units
+Air Temperature;air_temperature;TMP_2_ISBL;K
+Geopotential Height;geopotential_height;HGT_2_ISBL;m
+Omega Velocity;omega;V_VEL_2_ISBL;Pa/s
+Eastward Wind Component;eastward_wind;U_GRD_2_ISBL;m/s
+Northward Wind Component;northward_wind;V_GRD_2_ISBL;m/s
+Sea Level Pressure;pressure;PRES_2_MSL;hPa
+Longitude;;lon_2
+Latitude;;lat_2
+Time;;initial_time0_hours
+Vertical Level;;lv_ISBL3
