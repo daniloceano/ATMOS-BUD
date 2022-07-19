@@ -128,6 +128,13 @@ def LagrangianAnalysis(LagrangianObj):
     
     timesteps = LagrangianObj.NetCDF_data[LagrangianObj.TimeIndexer]
     
+    PresLevels = LagrangianObj.Temperature[LagrangianObj.LevelIndexer].\
+        metpy.convert_units('hPa').values
+    
+    dfT_ZE_AA = dfO_ZE_AA = dfQ_ZE_AA = \
+        pd.DataFrame(columns=[str(t.values) for t in timesteps],
+        index=[float(i) for i in PresLevels])
+    
     for t in timesteps:
         # Get current time and box limits
         itime = str(t.values)
@@ -139,19 +146,20 @@ def LagrangianAnalysis(LagrangianObj):
         print('Box limits (lon/lat): '+str(max_lon)+'/'+str(max_lat),
               ' '+str(min_lon)+'/'+str(min_lat))
         
+        
         # Get closest grid point to actual track
         WesternLimit = float((NetCDF_data[LagrangianObj.LonIndexer]
                              [(np.abs(NetCDF_data[LagrangianObj.LonIndexer] - 
-                              float(dfbox.loc['min_lon']))).argmin()]))
+                              min_lon)).argmin()]))
         EasternLimit = float((NetCDF_data[LagrangianObj.LonIndexer]
                               [(np.abs(NetCDF_data[LagrangianObj.LonIndexer] - 
-                               float(dfbox.loc['max_lon']))).argmin()]).values)
+                              max_lon)).argmin()]).values)
         SouthernLimit = float((NetCDF_data[LagrangianObj.LatIndexer]
                                [(np.abs(NetCDF_data[LagrangianObj.LatIndexer] - 
-                               float(dfbox.loc['min_lat']))).argmin()]).values)
+                               min_lat)).argmin()]).values)
         NorthernLimit = float((NetCDF_data[LagrangianObj.LatIndexer]
                                [(np.abs(NetCDF_data[LagrangianObj.LatIndexer] - 
-                               float(dfbox.loc['max_lat']))).argmin()]).values)
+                               max_lat)).argmin()]).values)
         
         
         T = LagrangianObj.Temperature.sel({LagrangianObj.TimeIndexer:t}).sel(
@@ -162,6 +170,7 @@ def LagrangianAnalysis(LagrangianObj):
         T_ZE = T - T_ZA
         T_ZE_AA = CalcAreaAverage(T_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
+        dfT_ZE_AA[itime] = T_ZE_AA
         
         Omega = LagrangianObj.Omega.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
@@ -171,6 +180,7 @@ def LagrangianAnalysis(LagrangianObj):
         Omega_ZE = Omega - Omega_ZA
         Omega_ZE_AA = CalcAreaAverage(Omega_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
+        dfO_ZE_AA[itime] = Omega_ZE_AA        
         
         Q = LagrangianObj.AdiabaticHeating.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
@@ -180,58 +190,59 @@ def LagrangianAnalysis(LagrangianObj):
         Q_ZE = Q - Q_ZA
         Q_ZE_AA = CalcAreaAverage(Q_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
+        dfQ_ZE_AA[itime] = Q_ZE_AA 
+        
+    dfT_ZE_AA.to_csv(ResultsSubDirectory+'T_ZE_AA.csv')
+    dfO_ZE_AA.to_csv(ResultsSubDirectory+'Omega_ZE_AA.csv')
+    dfQ_ZE_AA.to_csv(ResultsSubDirectory+'Q_ZE_AA.csv')
+
     
 if __name__ == "__main__":
     
-    infile = '../lorenz_etc/Reg1-Representative_NCEP-R2.nc'
+    parser = argparse.ArgumentParser(description = "\
+Program for analysing the thermodynamics of a cyclone. \n \
+The program can use two distinct frameworks:\
+    1) Lagragian framework. A box is definid in the box_lims' file and then the \
+        energetics are computed for a fixed domain.\
+    2) Eulerian framework. The domain is not fixed and follows the system using \
+        the 'track' file.\
+  Both frameworks can be applied at the same time, given the required files are\
+  provided. An auxilliary 'fvars' file is also needed for both frameworks. \
+  It contains the specified names used for each variable.  The results \
+  are stored as csv files in the 'LEC_results' directory on ../ and it also \
+  creates figures for visualising the results. \
+  The use of -r flag is required while the computation of friction parameters \
+  is not implemented")
+    parser.add_argument("infile", help = "input .nc file with temperature,\
+  geopotential and meridional, zonal and vertical components of the wind,\
+  in pressure levels")
+    parser.add_argument("-g", "--geopotential", default = False,
+    action='store_true', help = "use the geopotential data instead of\
+  geopotential height. The file fvars must be adjusted for doing so.")
+    parser.add_argument("-e", "--eulerian", default = False,
+    action='store_true', help = "compute the energetics for a fixed domain\
+  specified by the box_lims file.")
+    parser.add_argument("-l", "--lagrangian", default = False,
+    action='store_true', help = "compute the energetics for a fixed domain\
+  specified by the box_lims file.")
+    args = parser.parse_args()
+    
     varlist = './fvars'
     dfVars = pd.read_csv(varlist,sep= ';',index_col=0,header=0)
+    
+    infile  = args.infile
     NetCDF_data = convert_lon(xr.open_dataset(infile),
                               dfVars.loc['Longitude']['Variable'])
-    dfbox = pd.read_csv('./box_limits',header=None,delimiter=';',index_col=0)
-    EulerianObj = DataObject(NetCDF_data,dfVars,dfbox)
     
-    LagrangianObj = DataObject(NetCDF_data,dfVars)
-    LagrangianAnalysis(LagrangianObj)
-    
-
-    
-#     parser = argparse.ArgumentParser(description = "\
-# Program for analysing the thermodynamics of a cyclone. \n \
-# The program can use two distinct frameworks:\
-#     1) Lagragian framework. A box is definid in the box_lims' file and then the \
-#        energetics are computed for a fixed domain.\
-#     2) Eulerian framework. The domain is not fixed and follows the system using \
-#        the track file.\
-#  Both frameworks can be applied at the same time, given the required files are\
-#  provided. An auxilliary 'fvars' file is also needed for both frameworks. \
-#  It contains the specified names used for each variable.  The results \
-#  are stored as csv files in the 'LEC_results' directory on ../ and it also \
-#  creates figures for visualising the results. \
-#  The use of -r flag is required while the computation of friction parameters \
-#  is not implemented")
-#     parser.add_argument("infile", help = "input .nc file with temperature,\
-#  geopotential and meridional, zonal and vertical components of the wind,\
-#  in pressure levels")
-#     parser.add_argument("-g", "--geopotential", default = False,
-#     action='store_true', help = "use the geopotential data instead of\
-#  geopotential height. The file fvars must be adjusted for doing so.")
-#     parser.add_argument("-e", "--eulerian", default = False,
-#     action='store_true', help = "compute the energetics for a fixed domain\
-#  specified by the box_lims file.")
-#     parser.add_argument("-l", "--lagrangian", default = False,
-#     action='store_true', help = "compute the energetics for a fixed domain\
-#  specified by the box_lims file.")
-#     args = parser.parse_args()
-#     infile  = args.infile
-#     # box_limits = args.box_limits
-#     varlist = './fvars'
-#     # Run the program
-#     start_time = time.time()
-    # if args.eulerian:
-    #     eulerian()
-    # print("--- %s seconds running eulerian framework ---" % (time.time() - start_time))
-    # start_time = time.time()
-    # if args.lagrangian:
-    #     lagrangian()
-    # print("--- %s seconds for running lagrangian framework ---" % (time.time() - start_time))            
+    # Run the program
+    if args.eulerian:
+        start_time = time.time()
+        dfbox = pd.read_csv('./box_limits',header=None,delimiter=';',index_col=0)
+        EulerianObj = DataObject(NetCDF_data,dfVars,dfbox)
+        print('NOT IMPLEMENTED YET')
+        print("--- %s seconds running eulerian framework ---" % (time.time() - start_time))
+    if args.lagrangian:
+        start_time = time.time()
+        LagrangianObj = DataObject(NetCDF_data,dfVars)
+        LagrangianAnalysis(LagrangianObj)
+        print("--- %s seconds for running lagrangian framework ---" % (time.time() - start_time))            
