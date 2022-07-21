@@ -131,7 +131,8 @@ def LagrangianAnalysis(LagrangianObj):
     PresLevels = LagrangianObj.Temperature[LagrangianObj.LevelIndexer].\
         metpy.convert_units('hPa').values
     
-    stored_terms = ['T_ZE_AA','Omega_ZE_AA','Q_ZE_AA', # analysis terms
+    stored_terms = ['T_AA','Omega_AA','Q_AA', # average terms
+                    'T_ZE_AA','Omega_ZE_AA','Q_ZE_AA', # eddy terms (averaged)
                     'AdvHTemp','SpOmega','dTdt','ResT'] # thermodyn. eq. terms
     
     dfDict = {}
@@ -175,6 +176,7 @@ def LagrangianAnalysis(LagrangianObj):
         T_ZE = T - T_ZA
         T_ZE_AA = CalcAreaAverage(T_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
+        dfDict['T_AA'][itime] = T_AA  
         dfDict['T_ZE_AA'][itime] = T_ZE_AA   
         
         # Store area average of eddy component of omega
@@ -186,6 +188,7 @@ def LagrangianAnalysis(LagrangianObj):
         Omega_ZE = Omega - Omega_ZA
         Omega_ZE_AA = CalcAreaAverage(Omega_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
+        dfDict['Omega_AA'][itime] = Omega_AA
         dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA        
         
         # Store area average of eddy component of adiabatic heating
@@ -197,6 +200,7 @@ def LagrangianAnalysis(LagrangianObj):
         Q_ZE = Q - Q_ZA
         Q_ZE_AA = CalcAreaAverage(Q_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
+        dfDict['Q_AA'][itime] = Q_AA
         dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
         
         # Store area average for each term of thermodynamic equation
