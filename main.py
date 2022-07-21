@@ -85,13 +85,13 @@ class DataObject:
         self.Pressure = self.NetCDF_data[self.LevelIndexer]
         self.Theta = theta = potential_temperature(
             self.Pressure,self.Temperature)
-        self.delTdelt = self.Temperature.differentiate(
+        self.dTdt = self.Temperature.differentiate(
                 self.TimeIndexer,datetime_unit='s') / units('seconds')
-        self.AdvHT = self.HorizontalTemperatureAdvection()
+        self.AdvHTemp = self.HorizontalTemperatureAdvection()
         self.sigma = (self.Temperature/theta) *theta.differentiate(
             self.LevelIndexer)/units.hPa
-        self.AdiabaticHeating = (self.delTdelt - self.AdvHT -
-                                  (self.sigma * self.Omega))*Cp_d
+        self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
+        self.AdiabaticHeating = self.ResT*Cp_d
     def HorizontalTemperatureAdvection(self):
         lons,lats = self.Temperature[self.LonIndexer],\
             self.Temperature[self.LatIndexer]
@@ -131,9 +131,14 @@ def LagrangianAnalysis(LagrangianObj):
     PresLevels = LagrangianObj.Temperature[LagrangianObj.LevelIndexer].\
         metpy.convert_units('hPa').values
     
-    dfT_ZE_AA = dfO_ZE_AA = dfQ_ZE_AA = \
-        pd.DataFrame(columns=[str(t.values) for t in timesteps],
+    stored_terms = ['T_ZE_AA','Omega_ZE_AA','Q_ZE_AA', # analysis terms
+                    'AdvHTemp','SpOmega','dTdt','ResT'] # thermodyn. eq. terms
+    
+    dfDict = {}
+    for term in stored_terms:
+        dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
         index=[float(i) for i in PresLevels])
+
     
     for t in timesteps:
         # Get current time and box limits
@@ -161,7 +166,7 @@ def LagrangianAnalysis(LagrangianObj):
                                [(np.abs(NetCDF_data[LagrangianObj.LatIndexer] - 
                                max_lat)).argmin()]).values)
         
-        
+        # Store area average of eddy component of temperature
         T = LagrangianObj.Temperature.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -170,8 +175,9 @@ def LagrangianAnalysis(LagrangianObj):
         T_ZE = T - T_ZA
         T_ZE_AA = CalcAreaAverage(T_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
-        dfT_ZE_AA[itime] = T_ZE_AA
+        dfDict['T_ZE_AA'][itime] = T_ZE_AA   
         
+        # Store area average of eddy component of omega
         Omega = LagrangianObj.Omega.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -180,8 +186,9 @@ def LagrangianAnalysis(LagrangianObj):
         Omega_ZE = Omega - Omega_ZA
         Omega_ZE_AA = CalcAreaAverage(Omega_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
-        dfO_ZE_AA[itime] = Omega_ZE_AA        
+        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA        
         
+        # Store area average of eddy component of adiabatic heating
         Q = LagrangianObj.AdiabaticHeating.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -190,12 +197,44 @@ def LagrangianAnalysis(LagrangianObj):
         Q_ZE = Q - Q_ZA
         Q_ZE_AA = CalcAreaAverage(Q_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
-        dfQ_ZE_AA[itime] = Q_ZE_AA 
+        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
         
-    dfT_ZE_AA.to_csv(ResultsSubDirectory+'T_ZE_AA.csv')
-    dfO_ZE_AA.to_csv(ResultsSubDirectory+'Omega_ZE_AA.csv')
-    dfQ_ZE_AA.to_csv(ResultsSubDirectory+'Q_ZE_AA.csv')
-
+        # Store area average for each term of thermodynamic equation
+        AdvHTemp = LagrangianObj.AdvHTemp.sel({LagrangianObj.TimeIndexer:t}).sel(
+            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        sigma = LagrangianObj.sigma.sel({LagrangianObj.TimeIndexer:t}).sel(
+            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        dTdt = LagrangianObj.dTdt.sel({LagrangianObj.TimeIndexer:t}).sel(
+            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        ResT = LagrangianObj.ResT.sel({LagrangianObj.TimeIndexer:t}).sel(
+            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        
+        dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
+                                     LagrangianObj.LatIndexer,
+                                     LonIndexer=LagrangianObj.LonIndexer).\
+                                        metpy.convert_units('K/ day')
+        dfDict['SpOmega'][itime] = CalcAreaAverage(sigma*Omega,
+                                     LagrangianObj.LatIndexer,
+                                     LonIndexer=LagrangianObj.LonIndexer).\
+                                        metpy.convert_units('K/ day')
+        dfDict['dTdt'][itime] = CalcAreaAverage(dTdt,
+                                     LagrangianObj.LatIndexer,
+                                     LonIndexer=LagrangianObj.LonIndexer).\
+                                        metpy.convert_units('K/ day')
+        dfDict['ResT'][itime] = CalcAreaAverage(ResT,
+                                     LagrangianObj.LatIndexer,
+                                     LonIndexer=LagrangianObj.LonIndexer).\
+                                        metpy.convert_units('K/ day')
+        
+    # Save CSV files with all the terms stored above
+    for term in stored_terms:
+        dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
+    # Make figures
+    os.system("python plot_timeseries.py")
     
 if __name__ == "__main__":
     
