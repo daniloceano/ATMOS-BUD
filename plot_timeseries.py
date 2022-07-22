@@ -21,7 +21,10 @@ def time_series(fname,df1,label1,
     pdtime = pd.to_datetime(times) 
     plt.close('all')
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(14,10))
-    pres = [1000,850,700,500,300,200]
+    # Find vertical levels that closely matches the desired levels for plotting
+    MatchingLevels = []
+    for pres in [1000,850,700,500,300,200]:
+        MatchingLevels.append(min(df1.index, key=lambda x:abs(x-pres))) 
     max1,min1 = np.amax(np.amax(df1)), np.amin(np.amin(df1))
     if df2 is not None:
         max2,min2 = np.amax(np.amax(df2)), np.amin(np.amin(df2))
@@ -29,24 +32,24 @@ def time_series(fname,df1,label1,
     for row in range(2):
         for col in range(3):
             ax = axs[row,col]
-            p = pres[i]
+            p = MatchingLevels[i]
             ax = axs[row,col]
             ax.plot(pdtime,df1.loc[p],
                     color='#BF3D3B',linewidth=2)
-            if label1 != "T_AA":
+            if label1 != "T (K)" and df2 is None:
                 ax.axhline(0,zorder=0,c='#383838',alpha=.8,linewidth=.5,
                             label='')
             ax.tick_params(axis='x',rotation=45)
             ax.tick_params(axis='both',which='major',labelsize=10,
                            labelcolor='#383838')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-            if label1 != "T_AA":
+            if label1 != "T (K)":
                 ax.set_ylim(min1*1.2,max1*1.2)
             ax.set_title(str(p)+' hPa ',c='#383838',fontsize=12)
             ax.grid(c='#383838',linewidth=0.25,linestyle='-',alpha=.5)
             if col == 0:
                 ax.set_ylabel(label1,fontsize=12, c='#BF3D3B')
-            elif label1 == "T_AA":
+            elif label1 == "T (K)":
                 pass
             else:
                 ax.set_yticklabels([])
@@ -54,28 +57,35 @@ def time_series(fname,df1,label1,
                 ax2 = ax.twinx()
                 ax2.plot(pdtime,df2.loc[p],
                     '--', color='#3B95BF',linewidth=2)
-                if label2 == "T_AA":
-                    ax.set_ylim(200,360)
-                else:
+                if label2 != "T (K)":
                     ax2.set_ylim(min2*1.05,max2*1.05)
                 ax2.tick_params(axis='both',which='major',labelsize=10,
                            labelcolor='#383838')
+                ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
                 if col == 2:
                     ax2.set_ylabel(label2,fontsize=12, c='#3B95BF')
-                elif label2 == "T_AA":
+                elif label2 == "T (K)":
+                    print('oi')
                     pass
                 else:
                     ax2.set_yticklabels([])
             i += 1
-    plt.savefig(FigsSubDirectory+'timeseries_'+fname,bbox_inches='tight') 
-    print(FigsSubDirectory+'timeseries_'+fname+' created!')
+    if df2 is not None:
+        outfilename = FigsSubDirectory+'timeseries_compare_'+fname
+    else:
+        outfilename = FigsSubDirectory+'timeseries_'+fname
+    plt.savefig(outfilename,bbox_inches='tight') 
+    print(outfilename+' created!')
             
 def time_series_thermodyn(ThermDict):    
     times = ThermDict['AdvHTemp'].columns
     pdtime = pd.to_datetime(times) 
     plt.close('all')
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(14,10))
-    pres = [1000,850,700,500,300,200]
+    # Find vertical levels that closely matches the desired levels for plotting
+    MatchingLevels = []
+    for pres in [1000,850,700,500,300,200]:
+        MatchingLevels.append(min(ThermDict['AdvHTemp'].index, key=lambda x:abs(x-pres)))   
     cols = ['#3B95BF','#87BF4B','#BFAB37','#BF3D3B']
     # Data range
     maxv = minv = []
@@ -88,7 +98,7 @@ def time_series_thermodyn(ThermDict):
     for row in range(2):
         for col in range(3):
             ax = axs[row,col]
-            p = pres[i]
+            p = MatchingLevels[i]
             ax = axs[row,col]
             for term,c in zip(ThermDict.keys(),cols):
                 ax.plot(pdtime,ThermDict[term].loc[p],
@@ -168,23 +178,23 @@ if __name__ == "__main__":
         time_series(term,df,label,df2=None,label2=None)
         plot_Hovmoller(df,label,term)
     # compare eddy area averages 
-    for term1,term2,label1,label2 in zip(terms[:3],terms[:3],
-                                         labels[:3],labels[:3]):
-        if term1 == term2:
-            pass
-        else:
-            df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
-            df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
-            time_series(term,df1,label1,df2=df2,label2=term2)
+    for term1,label1 in zip(terms[:3],labels[:3]):
+        for term2,label2 in zip(terms[:3],labels[:3]):
+            if term1 == term2:
+                pass
+            else:
+                df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
+                df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
+                time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
     # compare area averages       
-    for term1,term2,label1,label2 in zip(terms[3:],terms[3:],
-                                         labels[3:],labels[3:]):
-        if term1 == term2:
-            pass
-        else:
-            df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
-            df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
-            time_series(term,df1,label1,df2=df2,label2=term2)
+    for term1,label1 in zip(terms[3:],labels[3:]):
+        for term2,label2 in zip(terms[3:],labels[3:]):
+            if term1 == term2:
+                pass
+            else:
+                df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
+                df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
+                time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
             
     # # Plot terms of the thermodynamic equation
     ThermDict = {}
