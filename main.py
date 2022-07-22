@@ -15,9 +15,7 @@ Contact:
 
 
 from metpy.units import units
-from metpy.constants import Rd
 from metpy.constants import Cp_d
-from metpy.constants import g
 from metpy.constants import Re
 from metpy.calc import potential_temperature
 
@@ -26,27 +24,62 @@ import xarray as xr
 import os
 import numpy as np
 import argparse
-import traceback
-import logging
 
 from calc import CalcAreaAverage, CalcZonalAverage
+from plot_maps import LagrangianMaps as plot_map
 
 import time
 
 def check_create_folder(DirName):
+    """
+
+    Check if directory exists and if not, creates it.
+    
+    Parameters
+    ----------
+    DirName : str
+        directory name.
+
+    Returns
+    -------
+    None. 
+
+    """
     if not os.path.exists(DirName):
                 os.makedirs(DirName)
                 print(DirName+' created')
     else:
         print(DirName+' directory exists')
  
-# Convert longitudes from 0:360 range to -180:180
-def convert_lon(df,LonIndexer):
-    df.coords[LonIndexer] = (df.coords[LonIndexer] + 180) % 360 - 180
-    df = df.sortby(df[LonIndexer])
-    return df
+def convert_lon(xr,LonIndexer):
+    """
+    
+    Convert longitudes from 0:360 range to -180:180
+
+    Parameters
+    ----------
+    xr : xarray.DataArray 
+        gridded data.
+    LonIndexer : str
+        corrdinate indexer used for longitude.
+
+    Returns
+    -------
+    xr : xarray.DataArray 
+        gridded data with longitude converted to desired format.
+
+    """
+    xr.coords[LonIndexer] = (xr.coords[LonIndexer] + 180) % 360 - 180
+    xr = xr.sortby(xr[LonIndexer])
+    return xr
 
 class DataObject:
+    """
+    Object for storing variables from a NetCDF file on intialization.
+    It also computes each term of the Quasi-Geostrophic Equation, except the
+    Adiabatic Heating Term (Q) which is estimated as a residual. 
+    Note that: Q = J *Cp_d
+    """
     def __init__(self,NetCDF_data: xr.Dataset,
                  dfVars: pd.DataFrame,
                  dfbox: pd.DataFrame=None):
@@ -54,6 +87,10 @@ class DataObject:
         self.LatIndexer = dfVars.loc['Latitude']['Variable']
         self.TimeIndexer = dfVars.loc['Time']['Variable']
         self.LevelIndexer = dfVars.loc['Vertical Level']['Variable']
+        # When constructing object for eulerian analysis, the data can
+        # be sliced beforehand using the dfBox limits, but for the lagrangian
+        # analysis (dfBox not specified), we need full data and then it is
+        # sliced for each timestep.
         if dfbox is None:
             self.NetCDF_data = NetCDF_data
         else:
@@ -96,7 +133,6 @@ class DataObject:
         lons,lats = self.Temperature[self.LonIndexer],\
             self.Temperature[self.LatIndexer]
         cos_lats = np.cos(np.deg2rad(lats))
-        ## Horizontal advection of temperature ##
         # Differentiate temperature in respect to longitude and latitude
         dTdlambda = self.Temperature.copy(deep=True
                                           ).differentiate(self.LonIndexer)
@@ -109,22 +145,40 @@ class DataObject:
         return AdvHT
 
 def LagrangianAnalysis(LagrangianObj):
-    
+    """
+    Parameters
+    ----------
+    LagrangianObj : DataObj
+        Object containing meteorological data from a NetCDF file
+
+    Returns
+    -------
+    For each timestep, creates a box with 15º width/height and store resuts 
+    in CSV files. Also creates Figures for posterior analysis. 
+    The variables stored are the Temperature, Omega and Q eddy means over the
+    domain (the box created), their eddy components (value at each grid 
+    point minus its zonal average) averaged over the domain and each term of
+    the Quasi-Geostrophic Thermodynamic Equation.
+    """
     # Track file
     trackfile = './track'
     track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
 
     # Directory where results will be stored
     ResultsMainDirectory = '../CycloneThermodynamics_Results'
-    # Append data limits to outfile name
+    # Append data method to outfile name
     outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_lagranigan'
     # Each dataset of results have its own directory, allowing to store results
     # from more than one experiment at each time
     ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
-    # Check if the LEC_Figures directory exists. If not, creates it
+    # Subdirectory for saving figures and maps
+    FigsDirectory = ResultsSubDirectory+'Figures/'
+    MapsDirectory = FigsDirectory+'maps'
+    # Check if the required directories exists. If not, creates them
     check_create_folder(ResultsMainDirectory)
-    # Check if a directory for current data exists. If not, creates it
     check_create_folder(ResultsSubDirectory)
+    check_create_folder(FigsDirectory)
+    check_create_folder(MapsDirectory)
     
     timesteps = LagrangianObj.NetCDF_data[LagrangianObj.TimeIndexer]
     
@@ -142,17 +196,15 @@ def LagrangianAnalysis(LagrangianObj):
 
     
     for t in timesteps:
-        # Get current time and box limits
+        # Get current time and time strings
         itime = str(t.values)
-        datestr1 = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
-        datestr2 = pd.to_datetime(itime).strftime('%Y%m%d%H%M')
+        datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
+        # Get current time and box limits
         min_lon, max_lon = track.loc[itime]['Lon']-7.5,track.loc[itime]['Lon']+7.5
         min_lat, max_lat = track.loc[itime]['Lat']-7.5,track.loc[itime]['Lat']+7.5
-        print('\nComputing terms for '+datestr1+'...')
+        print('\nComputing terms for '+datestr+'...')
         print('Box limits (lon/lat): '+str(max_lon)+'/'+str(max_lat),
               ' '+str(min_lon)+'/'+str(min_lat))
-        
-        
         # Get closest grid point to actual track
         WesternLimit = float((NetCDF_data[LagrangianObj.LonIndexer]
                              [(np.abs(NetCDF_data[LagrangianObj.LonIndexer] - 
@@ -167,7 +219,14 @@ def LagrangianAnalysis(LagrangianObj):
                                [(np.abs(NetCDF_data[LagrangianObj.LatIndexer] - 
                                max_lat)).argmin()]).values)
         
-        # Store area average of eddy component of temperature
+        ## In the next code lines we will slice data for current timestep 
+        # and for the specifed box -> Lagrangian analysis.
+        # ZA: zonal average (average through longitude circle)
+        # AA: area average for the selected box
+        # ZE: zonal eddy (value at each gridpoint minus its zonal average)
+        # ZE_AA: zonal eddy avreaged in the selected box
+        
+        # Store area average and the averaged eddy component of temperature
         T = LagrangianObj.Temperature.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -178,8 +237,10 @@ def LagrangianAnalysis(LagrangianObj):
                                   LonIndexer=LagrangianObj.LonIndexer)
         dfDict['T_AA'][itime] = T_AA  
         dfDict['T_ZE_AA'][itime] = T_ZE_AA   
+        plot_map(T,MapsDirectory,"T")
+        plot_map(T_ZE,MapsDirectory,"T_ZE")
         
-        # Store area average of eddy component of omega
+        # Store area average and the averaged eddy component of omega
         Omega = LagrangianObj.Omega.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -189,9 +250,12 @@ def LagrangianAnalysis(LagrangianObj):
         Omega_ZE_AA = CalcAreaAverage(Omega_ZE,LagrangianObj.LatIndexer,
                                   LonIndexer=LagrangianObj.LonIndexer)
         dfDict['Omega_AA'][itime] = Omega_AA
-        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA        
+        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA  
+        plot_map(Omega,MapsDirectory,"Omega")
+        plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
         
-        # Store area average of eddy component of adiabatic heating
+        # Store area average and the averaged eddy component of the adiabatic
+        # heating
         Q = LagrangianObj.AdiabaticHeating.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -202,8 +266,12 @@ def LagrangianAnalysis(LagrangianObj):
                                   LonIndexer=LagrangianObj.LonIndexer)
         dfDict['Q_AA'][itime] = Q_AA
         dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
+        plot_map(Q,MapsDirectory,"Q")
+        plot_map(Q_ZE,MapsDirectory,"Q_ZE")
         
-        # Store area average for each term of thermodynamic equation
+        plot_map(Q_ZE*Omega_ZE,MapsDirectory,"QOmega_ZE")
+        
+        # Store area average and of each thermodynamic equation
         AdvHTemp = LagrangianObj.AdvHTemp.sel({LagrangianObj.TimeIndexer:t}).sel(
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
@@ -217,6 +285,7 @@ def LagrangianAnalysis(LagrangianObj):
             **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         
+        # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
                                      LagrangianObj.LatIndexer,
                                      LonIndexer=LagrangianObj.LonIndexer).\
@@ -237,7 +306,7 @@ def LagrangianAnalysis(LagrangianObj):
     # Save CSV files with all the terms stored above
     for term in stored_terms:
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
-    # Make figures
+    # Make timeseries
     os.system("python plot_timeseries.py")
     
 if __name__ == "__main__":
@@ -248,14 +317,12 @@ The program can use two distinct frameworks:\
     1) Lagragian framework. A box is definid in the box_lims' file and then the \
         energetics are computed for a fixed domain.\
     2) Eulerian framework. The domain is not fixed and follows the system using \
-        the 'track' file.\
+        the 'track' file. (NOT IMPLEMENTED YET!)\
   Both frameworks can be applied at the same time, given the required files are\
   provided. An auxilliary 'fvars' file is also needed for both frameworks. \
   It contains the specified names used for each variable.  The results \
-  are stored as csv files in the 'LEC_results' directory on ../ and it also \
-  creates figures for visualising the results. \
-  The use of -r flag is required while the computation of friction parameters \
-  is not implemented")
+  are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
+  ../ and it also creates figures for visualising the results.")
     parser.add_argument("infile", help = "input .nc file with temperature,\
   geopotential and meridional, zonal and vertical components of the wind,\
   in pressure levels")
@@ -264,7 +331,7 @@ The program can use two distinct frameworks:\
   geopotential height. The file fvars must be adjusted for doing so.")
     parser.add_argument("-e", "--eulerian", default = False,
     action='store_true', help = "compute the energetics for a fixed domain\
-  specified by the box_lims file.")
+  specified by the box_lims file. (NOT IMPLEMENTED YET!)")
     parser.add_argument("-l", "--lagrangian", default = False,
     action='store_true', help = "compute the energetics for a fixed domain\
   specified by the box_lims file.")

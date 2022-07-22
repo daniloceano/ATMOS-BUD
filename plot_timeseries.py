@@ -16,7 +16,29 @@ import matplotlib.colors as colors
 from matplotlib import cm
 
 def time_series(fname,df1,label1,
-                df2=None,label2=None):    
+                df2=None,label2=None):  
+    """
+
+    Parameters
+    ----------
+    fname : str
+        Name to append to outfile.
+    df1 : pandas.DataFrame
+        Dataframe containing data to be ploted. Indexes are vertical levels and
+        Columns are timesteps
+    label1 : str
+        label for y-axis.
+    df2 : andas.DataFrame, optional
+        same as in df1. The default is None.
+    label2 : str, optional
+        same as in label1. The default is None.
+
+    Returns
+    -------
+    Plot time series for the input data vertical levels closest to 1000, 850, 
+    700, 500, 300 and 200 hPa and save figures. 
+
+    """
     times = df1.columns
     pdtime = pd.to_datetime(times) 
     plt.close('all')
@@ -36,6 +58,7 @@ def time_series(fname,df1,label1,
             ax = axs[row,col]
             ax.plot(pdtime,df1.loc[p],
                     color='#BF3D3B',linewidth=2)
+            # If plotting temperature, do not plot horizontal line for 0.
             if label1 != "T (K)" and df2 is None:
                 ax.axhline(0,zorder=0,c='#383838',alpha=.8,linewidth=.5,
                             label='')
@@ -43,16 +66,23 @@ def time_series(fname,df1,label1,
             ax.tick_params(axis='both',which='major',labelsize=10,
                            labelcolor='#383838')
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            # If plotting temperature, avoid setting a constant limit for the
+            # y-axis as for each vertical level, the values greatly differ.
             if label1 != "T (K)":
                 ax.set_ylim(min1*1.2,max1*1.2)
             ax.set_title(str(p)+' hPa ',c='#383838',fontsize=12)
             ax.grid(c='#383838',linewidth=0.25,linestyle='-',alpha=.5)
+            # Hide axis except for the first column
             if col == 0:
                 ax.set_ylabel(label1,fontsize=12, c='#BF3D3B')
+            # ...but as when plotting temperature there is not a fixed limit,
+            # it is needed to show the axis values, in this case
             elif label1 == "T (K)":
                 pass
+            #  we can hide the axsis values for the other cases
             else:
                 ax.set_yticklabels([])
+            # Plot the second data when it's provided
             if df2 is not None:
                 ax2 = ax.twinx()
                 ax2.plot(pdtime,df2.loc[p],
@@ -78,6 +108,21 @@ def time_series(fname,df1,label1,
     print(outfilename+' created!')
             
 def time_series_thermodyn(ThermDict):    
+    """
+    
+    Parameters
+    ----------
+    ThermDict : dict
+        Dictonary containing DataFrames with each term of the quasi-geostrphic
+        thermodynamic equation. For each Dataframe, Indexes are vertical levels 
+        and Columns are timesteps
+
+    Returns
+    -------
+    Plot time series for each term vertical levels closest to 1000, 850, 700,
+    500, 300 and 200 hPa and save figures.
+
+    """
     times = ThermDict['AdvHTemp'].columns
     pdtime = pd.to_datetime(times) 
     plt.close('all')
@@ -127,6 +172,23 @@ def time_series_thermodyn(ThermDict):
     print(FigsSubDirectory+'timeseries_thermodynamics created!')
     
 def plot_Hovmoller(df,units,fname):
+    """
+    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Dataframe containing data to be plotted. Indexes are vertical levels
+        and Columns are timesteps.
+    units : str
+        label for y-axis.
+    fname : str
+        Name to append to outfile.
+
+    Returns
+    -------
+    Create Hovmoller Plots (pressure x time) and store figures.
+
+    """
     times = df.columns
     pdtime = pd.to_datetime(times) 
     plt.close('all')
@@ -146,8 +208,6 @@ def plot_Hovmoller(df,units,fname):
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
     ax.set_title(fname,fontdict={'fontsize':14})
     ax.set_ylim(levs[0],levs[-1])
-    # plt.yscale('log')
-    # ax.set_yticks(levs)
     # colorbar
     cb_ax = fig.add_axes([0.92, 0.1, 0.02, 0.8])
     cbar = fig.colorbar(cf, cax=cb_ax)
@@ -181,6 +241,7 @@ if __name__ == "__main__":
     for term1,label1 in zip(terms[:3],labels[:3]):
         for term2,label2 in zip(terms[:3],labels[:3]):
             if term1 == term2:
+                # do not plot if the same term appears in both axes
                 pass
             else:
                 df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
@@ -190,13 +251,14 @@ if __name__ == "__main__":
     for term1,label1 in zip(terms[3:],labels[3:]):
         for term2,label2 in zip(terms[3:],labels[3:]):
             if term1 == term2:
+                # do not plot if the same term appears in both axes
                 pass
             else:
                 df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
                 df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
                 time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
             
-    # # Plot terms of the thermodynamic equation
+    # Plot each term of the thermodynamic equation
     ThermDict = {}
     terms = ['AdvHTemp','SpOmega','dTdt','ResT']
     for term in terms:
