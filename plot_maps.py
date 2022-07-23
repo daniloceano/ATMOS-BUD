@@ -116,7 +116,7 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
                 [min_lat,max_lat,max_lat,min_lat,min_lat],
                 linewidth=1,c='#383838',zorder=500)
         # plot contours
-        cf1 = ax.contourf(lon, lat, iData, cmap=cmap,norm=norm,extend='both') 
+        cf1 = ax.contourf(lon, lat, iData, cmap=cmap,norm=norm) 
         ax.contour(lon, lat, iData, cf1.levels,colors='#383838',
                    linewidths=0.25)
         # get time string
@@ -132,6 +132,6 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
         # decorators
         map_features(ax)
     # save file
-    outfile = FigsDirectory+'map_'+fname+'_'+str(date)
+    outfile = FigsDirectory+'/map_'+fname+'_'+str(date)
     plt.savefig(outfile)
     print(outfile+' created!')

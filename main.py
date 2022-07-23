@@ -269,7 +269,8 @@ def LagrangianAnalysis(LagrangianObj):
         plot_map(Q,MapsDirectory,"Q")
         plot_map(Q_ZE,MapsDirectory,"Q_ZE")
         
-        plot_map(Q_ZE*Omega_ZE,MapsDirectory,"QOmega_ZE")
+        plot_map(T_ZE*Omega_ZE,MapsDirectory,"TOmega_ZE")
+        plot_map(T_ZE*Q_ZE,MapsDirectory,"TQ_ZE")
         
         # Store area average and of each thermodynamic equation
         AdvHTemp = LagrangianObj.AdvHTemp.sel({LagrangianObj.TimeIndexer:t}).sel(
