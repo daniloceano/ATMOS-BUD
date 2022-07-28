@@ -325,11 +325,7 @@ The program can use two distinct frameworks:\
   are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
   ../ and it also creates figures for visualising the results.")
     parser.add_argument("infile", help = "input .nc file with temperature,\
-  geopotential and meridional, zonal and vertical components of the wind,\
-  in pressure levels")
-    parser.add_argument("-g", "--geopotential", default = False,
-    action='store_true', help = "use the geopotential data instead of\
-  geopotential height. The file fvars must be adjusted for doing so.")
+   meridional, zonal and vertical components of the wind, in pressure levels")
     parser.add_argument("-e", "--eulerian", default = False,
     action='store_true', help = "compute the energetics for a fixed domain\
   specified by the box_lims file. (NOT IMPLEMENTED YET!)")
