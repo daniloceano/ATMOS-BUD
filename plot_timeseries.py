@@ -14,6 +14,7 @@ import matplotlib.dates as mdates
 import cmocean as cmo
 import matplotlib.colors as colors
 from matplotlib import cm
+import sys
 
 def time_series(fname,df1,label1,
                 df2=None,label2=None):  
@@ -95,7 +96,6 @@ def time_series(fname,df1,label1,
                 if col == 2:
                     ax2.set_ylabel(label2,fontsize=12, c='#3B95BF')
                 elif label2 == "T (K)":
-                    print('oi')
                     pass
                 else:
                     ax2.set_yticklabels([])
@@ -220,7 +220,7 @@ def plot_Hovmoller(df,units,fname):
     
 if __name__ == "__main__":
     
-    ResultsSubDirectory = '../CycloneThermodynamics_Results/Reg1-Representative_NCEP-R2_lagranigan/'
+    ResultsSubDirectory = sys.argv[1]
     # Directory for saving Figures
     FigsSubDirectory = ResultsSubDirectory+'/Figures/'
     # Check if the LEC_Figures directory exists. If not, creates it
