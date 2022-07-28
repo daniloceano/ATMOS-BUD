@@ -237,8 +237,8 @@ def LagrangianAnalysis(LagrangianObj):
                                   LonIndexer=LagrangianObj.LonIndexer)
         dfDict['T_AA'][itime] = T_AA  
         dfDict['T_ZE_AA'][itime] = T_ZE_AA   
-        plot_map(T,MapsDirectory,"T")
-        plot_map(T_ZE,MapsDirectory,"T_ZE")
+        # plot_map(T,MapsDirectory,"T")
+        # plot_map(T_ZE,MapsDirectory,"T_ZE")
         
         # Store area average and the averaged eddy component of omega
         Omega = LagrangianObj.Omega.sel({LagrangianObj.TimeIndexer:t}).sel(
@@ -251,8 +251,8 @@ def LagrangianAnalysis(LagrangianObj):
                                   LonIndexer=LagrangianObj.LonIndexer)
         dfDict['Omega_AA'][itime] = Omega_AA
         dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA  
-        plot_map(Omega,MapsDirectory,"Omega")
-        plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
+        # plot_map(Omega,MapsDirectory,"Omega")
+        # plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
         
         # Store area average and the averaged eddy component of the adiabatic
         # heating
@@ -266,11 +266,24 @@ def LagrangianAnalysis(LagrangianObj):
                                   LonIndexer=LagrangianObj.LonIndexer)
         dfDict['Q_AA'][itime] = Q_AA
         dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
+        # Plot maps of adiabatic heating term
+        Q.name = "Q"
+        Q['units'] = "J kg-1 s-1"
         plot_map(Q,MapsDirectory,"Q")
+        Q_ZE.name = "Q'"
+        Q_ZE['units'] = "J kg-1 s-1"
         plot_map(Q_ZE,MapsDirectory,"Q_ZE")
         
-        plot_map(T_ZE*Omega_ZE,MapsDirectory,"TOmega_ZE")
-        plot_map(T_ZE*Q_ZE,MapsDirectory,"TQ_ZE")
+        # Plot temperature x omega (eddies)
+        TO_ZE = T_ZE*Omega_ZE
+        TO_ZE.name = "T'ω'"
+        TO_ZE['units'] = "K Pa-1 s-1"
+        plot_map(TO_ZE,MapsDirectory,"TOmega_ZE")
+        # Plot temperature x Q (eddies)
+        TQ_ZE = T_ZE*Q_ZE
+        TQ_ZE.name = "T'Q'"
+        TQ_ZE['units'] = "J K kg-1 s-1"
+        plot_map(TQ_ZE,MapsDirectory,"TQ_ZE")
         
         # Store area average and of each thermodynamic equation
         AdvHTemp = LagrangianObj.AdvHTemp.sel({LagrangianObj.TimeIndexer:t}).sel(
@@ -308,7 +321,7 @@ def LagrangianAnalysis(LagrangianObj):
     for term in stored_terms:
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
     # Make timeseries
-    os.system("python plot_timeseries.py")
+    os.system("python plot_timeseries.py "+ResultsSubDirectory)
     
 if __name__ == "__main__":
     

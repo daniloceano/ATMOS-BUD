@@ -21,7 +21,7 @@ import matplotlib.colors as colors
 
 def map_features(ax):
     ax.add_feature(COASTLINE)
-    ax.add_feature(BORDERS, edgecolor='white')
+    ax.add_feature(BORDERS, edgecolor='#383838')
     return ax
 
 def Brazil_states(ax):    
@@ -76,8 +76,8 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
     proj = ccrs.PlateCarree() 
     # create figure
     plt.close('all')
-    fig = plt.figure(constrained_layout=False,figsize=(12,10))
-    gs = gridspec.GridSpec(2, 3, hspace=0.2, wspace=0.1,
+    fig = plt.figure(constrained_layout=False,figsize=(24,18))
+    gs = gridspec.GridSpec(2, 3, hspace=0, wspace=0.1,
                                    left=0.05, right=0.95)
     # Find vertical levels that closely matches the desired levels for plotting
     MatchingLevels = []
@@ -122,16 +122,24 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
         # get time string
         timestr = pd.to_datetime(str(iData[TimeIndexer].values))
         date = timestr.strftime('%Y-%m-%dT%H%MZ')
-        ax.text(0.05,1.01,str(p)+' '+str(VariableData[LevelIndexer].units), transform=ax.transAxes, fontsize=16)
+        # Title
+        title = VariableData.name+' ('+str(VariableData.units.values)+') ' 
+        title += 'at '+str(p)+' hPa for '+str(date)
+        ax.text(0.01,1.01,title,
+                transform=ax.transAxes, fontsize=16)
         # plot the cyclone center
         ax.scatter(track.loc[itime]['Lon'],track.loc[itime]['Lat'],
                    zorder=1000, color='#383838',linewidth=2,edgecolor='k')
         # colorbar
-        cbar = plt.colorbar(cf1)
+        v = np.linspace(min1, max1, 15, endpoint=True,dtype=int)
+        cbar = plt.colorbar(cf1,fraction=0.046,pad=0.07,orientation='horizontal',
+                            norm=norm)
         cbar.ax.tick_params(labelsize=10) 
+        for t in cbar.ax.get_yticklabels():
+             t.set_fontsize(10) 
         # decorators
         map_features(ax)
     # save file
     outfile = FigsDirectory+'/map_'+fname+'_'+str(date)
-    plt.savefig(outfile)
+    plt.savefig(outfile, bbox_inches='tight')
     print(outfile+' created!')
