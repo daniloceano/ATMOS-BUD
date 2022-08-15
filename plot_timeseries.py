@@ -221,14 +221,45 @@ def plot_Hovmoller(df,units,fname):
     
 def plot_periods_vertical(ThermDict):
     
-    fig = plt.figure(figsize=(12, 10))
-    gs = gridspec.GridSpec(nrows=2, ncols=2, 
-                           wspace=0.3,hspace=0.3, top=0.95)
+    linecolors = ['#3B95BF','#87BF4B','#BFAB37','#BF3D3B']
+    markers = ['s','o','^','v','<','>']     
+    markercolor =  ['#59c0f0','#b0fa61','#f0d643','#f75452','#f07243','#bc6ff7']   
     
+    terms = ThermDict.keys()
     periods = pd.read_csv('./periods',sep= ';',header=0)
-    for i in range(len(periods)):
-        ax = fig.add_subplot(gs[i])
     
+    for i in range(len(periods)):
+        fig = plt.figure(figsize=(10, 12))
+        ax = fig.add_subplot()
+        start,end = periods.iloc[i]['start'],periods.iloc[i]['end']
+        period =  periods.iloc[i]['Period']
+        
+        for term,j in zip(terms,range(len(terms))):
+            t = ThermDict[term]
+            levs = t.index.values
+            # Need to adjust columns to dateformat
+            dates = pd.to_datetime(t.columns.values)
+            t.columns = dates
+            # Get data for selected periods
+            selected_dates = t.columns[(t.columns >= start) & (t.columns <= end)]
+            data_period = t[selected_dates].transpose().mean()
+            # plot
+            ax.plot(data_period,levs,label=term,
+                    c = linecolors[j], marker=markers[i],linewidth=2,
+                    markerfacecolor=markercolor[j])
+        # plot cosmedics
+        plt.grid(visible=True,c='gray',linewidth=0.25,linestyle='dashdot')
+        ax.axvline(0,c='#383838',linewidth=0.5,zorder=1)
+        ax.xaxis.set_tick_params(labelsize=16)
+        ax.yaxis.set_tick_params(labelsize=16)
+        ax.set_xlabel('(K day-1)',fontsize=18)
+        ax.set_ylabel('Pressure (hPa)',fontsize=18)
+        plt.legend(prop={'size': 18})
+        plt.title(period,fontsize=20)
+        plt.ylim(levs[-1],levs[0])
+        # save
+        plt.savefig(FigsSubDirectory+'thermodynamics_vertical_'+period,
+                    bbox_inches='tight')
     
 if __name__ == "__main__":
     
