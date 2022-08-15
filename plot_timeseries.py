@@ -11,6 +11,7 @@ import numpy as np
 from main import check_create_folder
 import pandas as pd
 import matplotlib.dates as mdates
+import matplotlib.gridspec as gridspec
 import cmocean as cmo
 import matplotlib.colors as colors
 from matplotlib import cm
@@ -217,6 +218,17 @@ def plot_Hovmoller(df,units,fname):
          t.set_fontsize(10)
     plt.savefig(FigsSubDirectory+'hovmoller_'+fname,bbox_inches='tight') 
     print(FigsSubDirectory+'hovmoller_'+fname+' created!')
+    
+def plot_periods_vertical(ThermDict):
+    
+    fig = plt.figure(figsize=(12, 10))
+    gs = gridspec.GridSpec(nrows=2, ncols=2, 
+                           wspace=0.3,hspace=0.3, top=0.95)
+    
+    periods = pd.read_csv('./periods',sep= ';',header=0)
+    for i in range(len(periods)):
+        ax = fig.add_subplot(gs[i])
+    
     
 if __name__ == "__main__":
     
