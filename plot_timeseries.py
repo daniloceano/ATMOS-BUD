@@ -200,13 +200,14 @@ def plot_Hovmoller(df,units,fname):
     max1,min1 = np.amax(np.amax(df)), np.amin(np.amin(df))
     if min1 < 0:
         norm = colors.TwoSlopeNorm(vmin=min1, vcenter=0, vmax=max1)
-        cmap='cmo.curl'
+        cmap='bwr'
     else:
         norm = cm.colors.Normalize(vmax=max1, vmin=min1)
         cmap='cmo.tarn'
     levs = sorted(df.index.values, reverse=True)
-    cf = ax.contourf(pdtime,levs,df,cmap=cmap, extend='both',norm=norm)
-    ax.contour(pdtime,levs,df,colors='k', extend='both')
+    cf = ax.contourf(pdtime,levs,df,cmap=cmap, extend='both',norm=norm,
+                     levels=1000)
+    # ax.contour(pdtime,levs,df,colors='k', extend='both')
     ax.tick_params(axis='x',labelrotation=20)
     ax.tick_params(size=12)
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
