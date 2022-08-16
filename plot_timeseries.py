@@ -11,11 +11,11 @@ import numpy as np
 from main import check_create_folder
 import pandas as pd
 import matplotlib.dates as mdates
-import matplotlib.gridspec as gridspec
 import cmocean as cmo
 import matplotlib.colors as colors
 from matplotlib import cm
 import sys
+import os
 
 def time_series(fname,df1,label1,
                 df2=None,label2=None):  
@@ -101,10 +101,12 @@ def time_series(fname,df1,label1,
                 else:
                     ax2.set_yticklabels([])
             i += 1
+    outdir = FigsSubDirectory+'/timeseries/'; os.makedirs(
+        outdir, exist_ok=True)
     if df2 is not None:
-        outfilename = FigsSubDirectory+'timeseries_compare_'+fname
+        outfilename = outdir+'timeseries_compare_'+fname
     else:
-        outfilename = FigsSubDirectory+'timeseries_'+fname
+        outfilename = outdir+'timeseries_'+fname
     plt.savefig(outfilename,bbox_inches='tight') 
     print(outfilename+' created!')
             
@@ -168,8 +170,9 @@ def time_series_thermodyn(ThermDict):
             i += 1
             
     plt.gcf().autofmt_xdate()
-    # ax.legend(fontsize=12)
-    plt.savefig(FigsSubDirectory+'timeseries_thermodynamics',bbox_inches='tight') 
+    outdir = FigsSubDirectory+'/thermodynamics/'; os.makedirs(
+        outdir, exist_ok=True)
+    plt.savefig(outdir+'timeseries_thermodynamics',bbox_inches='tight') 
     print(FigsSubDirectory+'timeseries_thermodynamics created!')
     
 def plot_Hovmoller(df,units,fname):
@@ -216,7 +219,9 @@ def plot_Hovmoller(df,units,fname):
     cbar.ax.set_ylabel(units, rotation=270,fontsize=12)
     for t in cbar.ax.get_yticklabels():
          t.set_fontsize(10)
-    plt.savefig(FigsSubDirectory+'hovmoller_'+fname,bbox_inches='tight') 
+    outdir = FigsSubDirectory+'/hovmoller/'; os.makedirs(
+        outdir, exist_ok=True)
+    plt.savefig(outdir+'hovmoller_'+fname,bbox_inches='tight') 
     print(FigsSubDirectory+'hovmoller_'+fname+' created!')
     
 def plot_periods_vertical(ThermDict):
@@ -258,7 +263,9 @@ def plot_periods_vertical(ThermDict):
         plt.title(period,fontsize=20)
         plt.ylim(levs[-1],levs[0])
         # save
-        plt.savefig(FigsSubDirectory+'thermodynamics_vertical_'+period,
+        outdir = FigsSubDirectory+'/thermodynamics/'; os.makedirs(
+            outdir, exist_ok=True)
+        plt.savefig(outdir+'vertical_periods'+period,
                     bbox_inches='tight')
     
 if __name__ == "__main__":
@@ -308,3 +315,6 @@ if __name__ == "__main__":
         ThermDict[term] = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
         time_series_thermodyn(ThermDict)
         plot_Hovmoller(ThermDict[term],'K day-1',term)
+    # Plot vertical profiles for the terms, for each period of the system
+    # life cycle
+    plot_periods_vertical(ThermDict)
