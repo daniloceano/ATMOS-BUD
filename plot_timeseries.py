@@ -11,11 +11,23 @@ import numpy as np
 from main import check_create_folder
 import pandas as pd
 import matplotlib.dates as mdates
-import cmocean as cmo
+import cmocean
 import matplotlib.colors as colors
 from matplotlib import cm
 import sys
 import os
+import matplotlib.colors
+
+def white_cmap(cmap):
+    n=35
+    x = 0.5
+    lower = cmap(np.linspace(0, x, n))
+    white = np.ones((80-2*n,4))
+    upper = cmap(np.linspace(1-x, 1, n))
+    colors = np.vstack((lower, white, upper))
+    tmap = matplotlib.colors.LinearSegmentedColormap.from_list('map_white', colors)
+    return tmap
+
 
 def time_series(fname,df1,label1,
                 df2=None,label2=None):  
@@ -197,29 +209,39 @@ def plot_Hovmoller(df,units,fname):
     pdtime = pd.to_datetime(times) 
     plt.close('all')
     fig, ax = plt.subplots(figsize=(14,10))
+    levs = sorted(df.index.values, reverse=True)
     max1,min1 = np.amax(np.amax(df)), np.amin(np.amin(df))
+    interval = 16
     if min1 < 0:
         norm = colors.TwoSlopeNorm(vmin=min1, vcenter=0, vmax=max1)
-        cmap='bwr'
+        cmap=white_cmap(cmocean.cm.balance)
+        if np.abs(max1) > np.abs(min1):
+            clev = np.linspace(-max1,max1,interval)
+        else:
+            clev = np.linspace(min1,-min1,interval)
     else:
         norm = cm.colors.Normalize(vmax=max1, vmin=min1)
-        cmap='cmo.tarn'
-    levs = sorted(df.index.values, reverse=True)
-    cf = ax.contourf(pdtime,levs,df,cmap=cmap, extend='both',norm=norm,
-                     levels=1000)
-    # ax.contour(pdtime,levs,df,colors='k', extend='both')
+        cmap=cmocean.cm.tarn
+        clev = np.linspace(min1,max1,interval)
+    cf = ax.contourf(pdtime,levs,df,
+                     cmap=cmap, extend='both',norm=norm,
+                     levels=clev)
+    ct = ax.contour(pdtime,levs,df,
+                    colors='#383838', extend='both',norm=norm,
+                    levels=clev, linewidths=0.5)
     ax.tick_params(axis='x',labelrotation=20)
-    ax.tick_params(size=12)
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-    ax.set_title(fname,fontdict={'fontsize':14})
+    ax.set_title(units,fontdict={'fontsize':14})
     ax.set_ylim(levs[0],levs[-1])
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16) 
     # colorbar
     cb_ax = fig.add_axes([0.92, 0.1, 0.02, 0.8])
     cbar = fig.colorbar(cf, cax=cb_ax)
+    cbar.add_lines(ct)
     cbar.ax.get_yaxis().labelpad = 15
-    cbar.ax.set_ylabel(units, rotation=270,fontsize=12)
     for t in cbar.ax.get_yticklabels():
-         t.set_fontsize(10)
+         t.set_fontsize(14)
     outdir = FigsSubDirectory+'/hovmoller/'; os.makedirs(
         outdir, exist_ok=True)
     plt.savefig(outdir+'hovmoller_'+fname,bbox_inches='tight') 
@@ -286,7 +308,7 @@ if __name__ == "__main__":
               "[T'] (K)","[ω'] (Pa s-1)","[Q'] (J Kg-1 s-1)"]
     for term,label in zip(terms,labels):
         df = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
-        time_series(term,df,label,df2=None,label2=None)
+        # time_series(term,df,label,df2=None,label2=None)
         plot_Hovmoller(df,label,term)
     # compare eddy area averages 
     for term1,label1 in zip(terms[:3],labels[:3]):
@@ -307,7 +329,7 @@ if __name__ == "__main__":
             else:
                 df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
                 df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
-                time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
+                # time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
             
     # Plot each term of the thermodynamic equation
     ThermDict = {}
@@ -315,7 +337,8 @@ if __name__ == "__main__":
     for term in terms:
         ThermDict[term] = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
         time_series_thermodyn(ThermDict)
-        plot_Hovmoller(ThermDict[term],'K day-1',term)
+        plot_Hovmoller(ThermDict[term],term+' [K day-1]',term)
+    
     # Plot vertical profiles for the terms, for each period of the system
     # life cycle
     plot_periods_vertical(ThermDict)
