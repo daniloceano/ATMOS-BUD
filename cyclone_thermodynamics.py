@@ -94,20 +94,20 @@ class DataObject:
         if dfbox is None:
             self.NetCDF_data = NetCDF_data
         else:
-            self.WesternLimit = float((NetCDF_data[self.LonIndexer]
-                                 [(np.abs(NetCDF_data[self.LonIndexer] - 
-                                  float(dfbox.loc['min_lon']))).argmin()]))
-            self.EasternLimit = float((NetCDF_data[self.LonIndexer]
-                                  [(np.abs(NetCDF_data[self.LonIndexer] - 
-                                   float(dfbox.loc['max_lon']))).argmin()]).values)
-            self.SouthernLimit = float((NetCDF_data[self.LatIndexer]
-                                   [(np.abs(NetCDF_data[self.LatIndexer] - 
-                                   float(dfbox.loc['min_lat']))).argmin()]).values)
-            self.NorthernLimit = float((NetCDF_data[self.LatIndexer]
-                                   [(np.abs(NetCDF_data[self.LatIndexer] - 
-                                   float(dfbox.loc['max_lat']))).argmin()]).values)
+            self.WesternLimit = float(NetCDF_data[self.LonIndexer].sel(
+                {self.LonIndexer:float(dfbox.loc['min_lon'].values)},
+                method='nearest'))
+            self.EasternLimit =float(NetCDF_data[self.LonIndexer].sel(
+                {self.LonIndexer:float(dfbox.loc['max_lon'].values)},
+                method='nearest'))
+            self.SouthernLimit =float(NetCDF_data[self.LatIndexer].sel(
+                {self.LatIndexer:float(dfbox.loc['min_lat'].values)},
+                method='nearest'))
+            self.NorthernLimit =float(NetCDF_data[self.LatIndexer].sel(
+                {self.LatIndexer:float(dfbox.loc['max_lat'].values)},
+                method='nearest'))
             self.NetCDF_data = NetCDF_data.sel(
-                **{self.LatIndexer:slice(self.NorthernLimit,self.SouthernLimit),
+                **{self.LatIndexer:slice(self.SouthernLimit,self.NorthernLimit),
                    self.LonIndexer: slice(self.WesternLimit,self.EasternLimit)})
         self.Temperature = self.NetCDF_data[dfVars.loc['Air Temperature']['Variable']] \
             * units(dfVars.loc['Air Temperature']['Units']).to('K')
@@ -130,14 +130,12 @@ class DataObject:
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
     def HorizontalTemperatureAdvection(self):
-        lons,lats = self.Temperature[self.LonIndexer],\
-            self.Temperature[self.LatIndexer]
-        cos_lats = np.cos(np.deg2rad(lats))
+        lons,lats  = self.NetCDF_data[self.LonIndexer],\
+            self.NetCDF_data[self.LatIndexer]
+        cos_lats = self.NetCDF_data["coslats"]
         # Differentiate temperature in respect to longitude and latitude
-        dTdlambda = self.Temperature.copy(deep=True
-                                          ).differentiate(self.LonIndexer)
-        dTdphi = self.Temperature.copy(deep=True
-                                       ).differentiate(self.LatIndexer)
+        dTdlambda = self.Temperature.differentiate(self.LonIndexer)
+        dTdphi = self.Temperature.differentiate(self.LatIndexer)
         # Get the values for dx and dy in meters
         dx = np.deg2rad(lons.differentiate(self.LonIndexer))*cos_lats*Re
         dy = np.deg2rad(lats.differentiate(self.LatIndexer))*Re
@@ -161,24 +159,8 @@ def LagrangianAnalysis(LagrangianObj):
     the Quasi-Geostrophic Thermodynamic Equation.
     """
     # Track file
-    trackfile = './track'
+    trackfile = './inputs/track'
     track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
-
-    # Directory where results will be stored
-    ResultsMainDirectory = '../CycloneThermodynamics_Results'
-    # Append data method to outfile name
-    outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_lagranigan'
-    # Each dataset of results have its own directory, allowing to store results
-    # from more than one experiment at each time
-    ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
-    # Subdirectory for saving figures and maps
-    FigsDirectory = ResultsSubDirectory+'Figures/'
-    MapsDirectory = FigsDirectory+'maps'
-    # Check if the required directories exists. If not, creates them
-    check_create_folder(ResultsMainDirectory)
-    check_create_folder(ResultsSubDirectory)
-    check_create_folder(FigsDirectory)
-    check_create_folder(MapsDirectory)
     
     timesteps = LagrangianObj.NetCDF_data[LagrangianObj.TimeIndexer]
     
@@ -206,19 +188,15 @@ def LagrangianAnalysis(LagrangianObj):
         print('Box limits (lon/lat): '+str(max_lon)+'/'+str(max_lat),
               ' '+str(min_lon)+'/'+str(min_lat))
         # Get closest grid point to actual track
-        WesternLimit = float((NetCDF_data[LagrangianObj.LonIndexer]
-                             [(np.abs(NetCDF_data[LagrangianObj.LonIndexer] - 
-                              min_lon)).argmin()]))
-        EasternLimit = float((NetCDF_data[LagrangianObj.LonIndexer]
-                              [(np.abs(NetCDF_data[LagrangianObj.LonIndexer] - 
-                              max_lon)).argmin()]).values)
-        SouthernLimit = float((NetCDF_data[LagrangianObj.LatIndexer]
-                               [(np.abs(NetCDF_data[LagrangianObj.LatIndexer] - 
-                               min_lat)).argmin()]).values)
-        NorthernLimit = float((NetCDF_data[LagrangianObj.LatIndexer]
-                               [(np.abs(NetCDF_data[LagrangianObj.LatIndexer] - 
-                               max_lat)).argmin()]).values)
-        
+        WesternLimit = float(NetCDF_data[LagrangianObj.LonIndexer].sel(
+            {LagrangianObj.LonIndexer:min_lon}, method='nearest'))
+        EasternLimit =float( NetCDF_data[LagrangianObj.LonIndexer].sel(
+            {LagrangianObj.LonIndexer:max_lon}, method='nearest'))
+        SouthernLimit = float(NetCDF_data[LagrangianObj.LatIndexer].sel(
+            {LagrangianObj.LatIndexer:min_lat}, method='nearest'))
+        NorthernLimit = float(NetCDF_data[LagrangianObj.LatIndexer].sel(
+            {LagrangianObj.LatIndexer:max_lat}, method='nearest'))
+    
         ## In the next code lines we will slice data for current timestep 
         # and for the specifed box -> Lagrangian analysis.
         # ZA: zonal average (average through longitude circle)
@@ -228,13 +206,12 @@ def LagrangianAnalysis(LagrangianObj):
         
         # Store area average and the averaged eddy component of temperature
         T = LagrangianObj.Temperature.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        T_ZA = CalcZonalAverage(T,LagrangianObj.LonIndexer)
-        T_AA = CalcAreaAverage(T_ZA,LagrangianObj.LatIndexer)
+        T_ZA = CalcZonalAverage(T)
+        T_AA = CalcAreaAverage(T_ZA)
         T_ZE = T - T_ZA
-        T_ZE_AA = CalcAreaAverage(T_ZE,LagrangianObj.LatIndexer,
-                                  LonIndexer=LagrangianObj.LonIndexer)
+        T_ZE_AA = CalcAreaAverage(T_ZE,ZonalAverage=True)
         dfDict['T_AA'][itime] = T_AA  
         dfDict['T_ZE_AA'][itime] = T_ZE_AA   
         # plot_map(T,MapsDirectory,"T")
@@ -242,13 +219,12 @@ def LagrangianAnalysis(LagrangianObj):
         
         # Store area average and the averaged eddy component of omega
         Omega = LagrangianObj.Omega.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        Omega_ZA = CalcZonalAverage(Omega,LagrangianObj.LonIndexer)
-        Omega_AA = CalcAreaAverage(Omega_ZA,LagrangianObj.LatIndexer)
+        Omega_ZA = CalcZonalAverage(Omega)
+        Omega_AA = CalcAreaAverage(Omega_ZA)
         Omega_ZE = Omega - Omega_ZA
-        Omega_ZE_AA = CalcAreaAverage(Omega_ZE,LagrangianObj.LatIndexer,
-                                  LonIndexer=LagrangianObj.LonIndexer)
+        Omega_ZE_AA = CalcAreaAverage(Omega_ZE,ZonalAverage=True)
         dfDict['Omega_AA'][itime] = Omega_AA
         dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA  
         # plot_map(Omega,MapsDirectory,"Omega")
@@ -257,13 +233,12 @@ def LagrangianAnalysis(LagrangianObj):
         # Store area average and the averaged eddy component of the adiabatic
         # heating
         Q = LagrangianObj.AdiabaticHeating.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        Q_ZA = CalcZonalAverage(Q,LagrangianObj.LonIndexer)
-        Q_AA = CalcAreaAverage(Q_ZA,LagrangianObj.LatIndexer)
+        Q_ZA = CalcZonalAverage(Q)
+        Q_AA = CalcAreaAverage(Q_ZA)
         Q_ZE = Q - Q_ZA
-        Q_ZE_AA = CalcAreaAverage(Q_ZE,LagrangianObj.LatIndexer,
-                                  LonIndexer=LagrangianObj.LonIndexer)
+        Q_ZE_AA = CalcAreaAverage(Q_ZE,ZonalAverage=True)
         dfDict['Q_AA'][itime] = Q_AA
         dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
         # Plot maps of adiabatic heating term
@@ -287,35 +262,27 @@ def LagrangianAnalysis(LagrangianObj):
         
         # Store area average and of each thermodynamic equation
         AdvHTemp = LagrangianObj.AdvHTemp.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         sigma = LagrangianObj.sigma.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         dTdt = LagrangianObj.dTdt.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         ResT = LagrangianObj.ResT.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(NorthernLimit,SouthernLimit),
+            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         
         # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
-                                     LagrangianObj.LatIndexer,
-                                     LonIndexer=LagrangianObj.LonIndexer).\
-                                        metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ day')
         dfDict['SpOmega'][itime] = CalcAreaAverage(sigma*Omega,
-                                     LagrangianObj.LatIndexer,
-                                     LonIndexer=LagrangianObj.LonIndexer).\
-                                        metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ day')
         dfDict['dTdt'][itime] = CalcAreaAverage(dTdt,
-                                     LagrangianObj.LatIndexer,
-                                     LonIndexer=LagrangianObj.LonIndexer).\
-                                        metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ day')
         dfDict['ResT'][itime] = CalcAreaAverage(ResT,
-                                     LagrangianObj.LatIndexer,
-                                     LonIndexer=LagrangianObj.LonIndexer).\
-                                        metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ day')
         
     # Save CSV files with all the terms stored above
     for term in stored_terms:
@@ -323,46 +290,183 @@ def LagrangianAnalysis(LagrangianObj):
     # Make timeseries
     os.system("python plot_timeseries.py "+ResultsSubDirectory)
     
+def EulerianAnalysis(EulerianObj):
+    
+    timesteps = EulerianObj.NetCDF_data[EulerianObj.TimeIndexer]
+    
+    PresLevels = EulerianObj.Temperature[EulerianObj.LevelIndexer].\
+        metpy.convert_units('hPa').values
+        
+    stored_terms = ['T_AA','Omega_AA','Q_AA', # average terms
+                    'T_ZE_AA','Omega_ZE_AA','Q_ZE_AA', # eddy terms (averaged)
+                    'AdvHTemp','SpOmega','dTdt','ResT'] # thermodyn. eq. terms
+    
+    dfDict = {}
+    for term in stored_terms:
+        dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
+        index=[float(i) for i in PresLevels])
+        
+    # Store area average and the averaged eddy component of temperature
+    T = EulerianObj.Temperature
+    T_ZA = CalcZonalAverage(T)
+    T_AA = CalcAreaAverage(T_ZA)
+    T_ZE = T - T_ZA
+    T_ZE_AA = CalcAreaAverage(T_ZE,ZonalAverage=True)
+    # plot_map(T,MapsDirectory,"T")
+    # plot_map(T_ZE,MapsDirectory,"T_ZE")
+    
+    # Store area average and the averaged eddy component of omega
+    Omega = EulerianObj.Omega
+    Omega_ZA = CalcZonalAverage(Omega)
+    Omega_AA = CalcAreaAverage(Omega_ZA)
+    Omega_ZE = Omega - Omega_ZA
+    Omega_ZE_AA = CalcAreaAverage(Omega_ZE,ZonalAverage=True)
+    
+    # plot_map(Omega,MapsDirectory,"Omega")
+    # plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
+    
+    # Store area average and the averaged eddy component of the adiabatic
+    # heating
+    Q = EulerianObj.AdiabaticHeating
+    Q_ZA = CalcZonalAverage(Q)
+    Q_AA = CalcAreaAverage(Q_ZA)
+    Q_ZE = Q - Q_ZA
+    Q_ZE_AA = CalcAreaAverage(Q_ZE,ZonalAverage=True)
+            
+    for t in timesteps:
+        # Get current time and time strings
+        itime = str(t.values)
+        datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
+        print("Storing results for: "+datestr)
+        
+        dfDict['T_AA'][itime] = T_AA.sel({EulerianObj.TimeIndexer:t})
+        dfDict['T_ZE_AA'][itime] = T_ZE_AA.sel({EulerianObj.TimeIndexer:t})
+        dfDict['Omega_AA'][itime] = Omega_AA.sel({EulerianObj.TimeIndexer:t})
+        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA.sel({EulerianObj.TimeIndexer:t})
+        dfDict['Q_AA'][itime] = Q_AA.sel({EulerianObj.TimeIndexer:t})
+        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA.sel({EulerianObj.TimeIndexer:t})
+          
+        # Plot maps of adiabatic heating term
+        Q.name = "Q"
+        Q['units'] = "J kg-1 s-1"
+        # plot_map(Q.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"Q")
+        Q_ZE.name = "Q'"
+        Q_ZE['units'] = "J kg-1 s-1"
+        # plot_map(Q_ZE.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"Q_ZE")
+        
+        # Plot temperature x omega (eddies)
+        TO_ZE = T_ZE*Omega_ZE
+        TO_ZE.name = "T'ω'"
+        TO_ZE['units'] = "K Pa-1 s-1"
+        # plot_map(TO_ZE.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"TOmega_ZE")
+        # Plot temperature x Q (eddies)
+        TQ_ZE = T_ZE*Q_ZE
+        TQ_ZE.name = "T'Q'"
+        TQ_ZE['units'] = "J K kg-1 s-1"
+        # plot_map(TQ_ZE.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"TQ_ZE")
+        
+        # Store area averages for each term of the thermodynamic equation
+        dfDict['AdvHTemp'][itime] = CalcAreaAverage(EulerianObj.AdvHTemp.sel(
+            {EulerianObj.TimeIndexer:t}),
+            ZonalAverage=True).metpy.convert_units('K/ day')
+        dfDict['SpOmega'][itime] = CalcAreaAverage(EulerianObj.sigma.sel(
+            {EulerianObj.TimeIndexer:t})*
+            Omega.sel({EulerianObj.TimeIndexer:t}),
+            ZonalAverage=True).metpy.convert_units('K/ day')
+        dfDict['dTdt'][itime] = CalcAreaAverage(EulerianObj.dTdt.sel(
+            {EulerianObj.TimeIndexer:t}),
+            ZonalAverage=True).metpy.convert_units('K/ day')
+        dfDict['ResT'][itime] = CalcAreaAverage(EulerianObj.ResT.sel(
+            {EulerianObj.TimeIndexer:t}),
+            ZonalAverage=True).metpy.convert_units('K/ day')
+                                                 
+    # Save CSV files with all the terms stored above
+    for term in stored_terms:
+        dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
+    # Make timeseries
+    os.system("python plot_timeseries.py "+ResultsSubDirectory)                                   
+    
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description = "\
-Program for analysing the thermodynamics of a cyclone. \n \
-The program can use two distinct frameworks:\
-    1) Lagragian framework. A box is definid in the box_lims' file and then the \
-        energetics are computed for a fixed domain.\
-    2) Eulerian framework. The domain is not fixed and follows the system using \
-        the 'track' file. (NOT IMPLEMENTED YET!)\
-  Both frameworks can be applied at the same time, given the required files are\
-  provided. An auxilliary 'fvars' file is also needed for both frameworks. \
-  It contains the specified names used for each variable.  The results \
-  are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
-  ../ and it also creates figures for visualising the results.")
+Program for analysing the thermodynamics of a cyclone. \
+The program can use two distinct frameworks:\n\
+    1) Eulerian framework. A box is definid in the box_lims' file and then the\
+ energetics are computed for a fixed domain. (NOT IMPLEMENTED YET!)\
+    2) Lagrangian framework. The domain is not fixed and follows the system \
+using the 'track' file.\
+Both frameworks can be applied at the same time, given the required files are\
+provided. An auxilliary 'fvars' file is also needed for both frameworks. \
+It contains the specified names used for each variable.  The results \
+are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
+../ and it also creates figures for visualising the results.")
     parser.add_argument("infile", help = "input .nc file with temperature,\
    meridional, zonal and vertical components of the wind, in pressure levels")
     parser.add_argument("-e", "--eulerian", default = False,
     action='store_true', help = "compute the energetics for a fixed domain\
-  specified by the box_lims file. (NOT IMPLEMENTED YET!)")
+ specified by the 'inputs/box_lims' file. (NOT IMPLEMENTED YET!)")
     parser.add_argument("-l", "--lagrangian", default = False,
-    action='store_true', help = "compute the energetics for a fixed domain\
-  specified by the box_lims file.")
+    action='store_true', help = "compute the energetics following the system\
+ as specified in the 'inputs/track' file")
     args = parser.parse_args()
     
-    varlist = './fvars'
+    start_time = time.time()
+    
+    # Open namelist
+    varlist = './inputs/fvars'
     dfVars = pd.read_csv(varlist,sep= ';',index_col=0,header=0)
     
+    # Data indexers
+    LonIndexer = dfVars.loc['Longitude']['Variable']
+    LatIndexer = dfVars.loc['Latitude']['Variable']
+    TimeIndexer = dfVars.loc['Time']['Variable']
+    LevelIndexer = dfVars.loc['Vertical Level']['Variable']
+    
+    # Open file
     infile  = args.infile
+    print('Opening file: '+infile)
     NetCDF_data = convert_lon(xr.open_dataset(infile),
                               dfVars.loc['Longitude']['Variable'])
+    print('Done.\nNow, running pre-processing stages...')
+    # load data into memory (code optmization)
+    NetCDF_data = NetCDF_data.load()
+    # Assign lat and lon as radians, for calculations
+    NetCDF_data = NetCDF_data.assign_coords(
+        {"rlats": np.deg2rad(NetCDF_data[LatIndexer])})
+    NetCDF_data = NetCDF_data.assign_coords(
+        {"coslats": np.cos(np.deg2rad(NetCDF_data[LatIndexer]))})
+    NetCDF_data = NetCDF_data.assign_coords(
+        {"rlons": np.deg2rad(NetCDF_data[LonIndexer])})
+    # Sort data coordinates as data from distinc sources might have different
+    # arrangements and this might affect the results from the integrations
+    NetCDF_data = NetCDF_data.sortby(LonIndexer).sortby(LevelIndexer).sortby(LatIndexer)
+    print('Done.')
+    
+    # Directory where results will be stored
+    ResultsMainDirectory = './Results/'
+    # Append data method to outfile name
+    outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_lagranigan'
+    # Each dataset of results have its own directory, allowing to store results
+    # from more than one experiment at each time
+    ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
+    # Subdirectory for saving figures and maps
+    FigsDirectory = ResultsSubDirectory+'Figures/'
+    MapsDirectory = FigsDirectory+'maps'
+    # Check if the required directories exists. If not, creates them
+    check_create_folder(ResultsMainDirectory)
+    check_create_folder(ResultsSubDirectory)
+    check_create_folder(FigsDirectory)
+    check_create_folder(MapsDirectory)
     
     # Run the program
     if args.eulerian:
-        start_time = time.time()
-        dfbox = pd.read_csv('./box_limits',header=None,delimiter=';',index_col=0)
+        print('Running eulerian framework.')
+        dfbox = pd.read_csv('./inputs/box_limits',header=None,delimiter=';',index_col=0)
         EulerianObj = DataObject(NetCDF_data,dfVars,dfbox)
-        print('NOT IMPLEMENTED YET')
+        EulerianAnalysis(EulerianObj)
         print("--- %s seconds running eulerian framework ---" % (time.time() - start_time))
     if args.lagrangian:
-        start_time = time.time()
+        print('Running lagrangian framework.')
         LagrangianObj = DataObject(NetCDF_data,dfVars)
         LagrangianAnalysis(LagrangianObj)
         print("--- %s seconds for running lagrangian framework ---" % (time.time() - start_time))            

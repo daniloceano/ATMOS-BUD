@@ -63,11 +63,11 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
     Create maps for each time step for model levels closest to 1000,850,700,
     500,300 and 200 hPa.
     """
-    dfVars = pd.read_csv('./fvars',sep= ';',index_col=0,header=0)
+    dfVars = pd.read_csv('./inputs/fvars',sep= ';',index_col=0,header=0)
     LonIndexer,LatIndexer,TimeIndexer,LevelIndexer = \
       dfVars.loc['Longitude']['Variable'],dfVars.loc['Latitude']['Variable'],\
       dfVars.loc['Time']['Variable'],dfVars.loc['Vertical Level']['Variable']
-    trackfile = './track'
+    trackfile = './inputs/track'
     track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
     # limits for the map (represents the maximum limits of the lagrangian box)
     westernlimit, easternlimit = track['Lon'].min()-7.55,track['Lon'].max()+7.55
@@ -97,7 +97,7 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
         Brazil_states(ax)
         # Slice data for the desired domain and pressure level
         iData = VariableData.sel({LevelIndexer:p}).sel(
-            **{LatIndexer:slice(max_lat,min_lat),
+            **{LatIndexer:slice(min_lat,max_lat),
                LonIndexer: slice(min_lon,max_lon)})
         # get latitude and longitude
         lon,lat = iData[LonIndexer], iData[LatIndexer]
