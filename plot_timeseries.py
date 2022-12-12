@@ -8,7 +8,7 @@ Created on Tue Jul 19 09:43:42 2022
 
 import matplotlib.pyplot as plt
 import numpy as np
-from main import check_create_folder
+from cyclone_thermodynamics import check_create_folder
 import pandas as pd
 import matplotlib.dates as mdates
 import cmocean
@@ -61,9 +61,9 @@ def time_series(fname,df1,label1,
     MatchingLevels = []
     for pres in [1000,850,700,500,300,200]:
         MatchingLevels.append(min(df1.index, key=lambda x:abs(x-pres))) 
-    max1,min1 = np.amax(np.amax(df1)), np.amin(np.amin(df1))
+    max1,min1 = df1.max().max(),df1.min().min()
     if df2 is not None:
-        max2,min2 = np.amax(np.amax(df2)), np.amin(np.amin(df2))
+        max2,min2 = df2.max().max(),df2.min().min()
     i = 0
     for row in range(2):
         for col in range(3):
@@ -150,8 +150,8 @@ def time_series_thermodyn(ThermDict):
     # Data range
     maxv = minv = []
     for term in ThermDict.keys():
-        maxv.append(np.amax(ThermDict[term]))
-        minv.append(np.amin(ThermDict[term]))
+        maxv.append(ThermDict[term].max())
+        minv.append(ThermDict[term].min())
     max1, min1 = np.amax(maxv), np.amin(minv)
     # iterator
     i = 0
@@ -210,7 +210,7 @@ def plot_Hovmoller(df,units,fname):
     plt.close('all')
     fig, ax = plt.subplots(figsize=(14,10))
     levs = sorted(df.index.values, reverse=True)
-    max1,min1 = np.amax(np.amax(df)), np.amin(np.amin(df))
+    max1,min1 = df.max().max(), df.min().min()
     interval = 16
     if min1 < 0:
         norm = colors.TwoSlopeNorm(vmin=min1, vcenter=0, vmax=max1)
@@ -254,7 +254,7 @@ def plot_periods_vertical(ThermDict):
     markercolor =  ['#59c0f0','#b0fa61','#f0d643','#f75452','#f07243','#bc6ff7']   
     
     terms = ThermDict.keys()
-    periods = pd.read_csv('./periods',sep= ';',header=0)
+    periods = pd.read_csv('./inputs/periods',sep= ';',header=0)
     
     for i in range(len(periods)):
         fig = plt.figure(figsize=(10, 12))
