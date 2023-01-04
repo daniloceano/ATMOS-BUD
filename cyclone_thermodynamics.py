@@ -78,7 +78,7 @@ class DataObject:
     Object for storing variables from a NetCDF file on intialization.
     It also computes each term of the Quasi-Geostrophic Equation, except the
     Adiabatic Heating Term (Q) which is estimated as a residual. 
-    Note that: Q = J *Cp_d
+    Note that: Q = J * Cp_d
     """
     def __init__(self,NetCDF_data: xr.Dataset,
                  dfVars: pd.DataFrame,
@@ -129,6 +129,7 @@ class DataObject:
             self.LevelIndexer)/units.hPa
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
+        
     def HorizontalTemperatureAdvection(self):
         lons,lats  = self.NetCDF_data[self.LonIndexer],\
             self.NetCDF_data[self.LatIndexer]
@@ -408,6 +409,8 @@ are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
     parser.add_argument("-l", "--lagrangian", default = False,
     action='store_true', help = "compute the energetics following the system\
  as specified in the 'inputs/track' file")
+    parser.add_argument("-m", "--multiple", default = False,
+    action='store_true', help = "open multiple files at once")
     args = parser.parse_args()
     
     start_time = time.time()
@@ -425,7 +428,11 @@ are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
     # Open file
     infile  = args.infile
     print('Opening file: '+infile)
-    NetCDF_data = convert_lon(xr.open_dataset(infile),
+    if args.multiple:
+        NetCDF_data = convert_lon(xr.open_mfdataset(infile, ),
+                              dfVars.loc['Longitude']['Variable'])
+    else:
+        NetCDF_data = convert_lon(xr.open_dataset(infile),
                               dfVars.loc['Longitude']['Variable'])
     print('Done.\nNow, running pre-processing stages...')
     # load data into memory (code optmization)
