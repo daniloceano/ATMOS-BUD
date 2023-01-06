@@ -18,6 +18,9 @@ from metpy.units import units
 from metpy.constants import Cp_d
 from metpy.constants import Re
 from metpy.calc import potential_temperature
+from metpy.calc import geopotential_to_height
+from metpy.calc import height_to_pressure_std
+from metpy.constants import g
 
 import pandas as pd
 import xarray as xr
@@ -27,6 +30,7 @@ import argparse
 
 from calc import CalcAreaAverage, CalcZonalAverage
 from plot_maps import LagrangianMaps as plot_map
+from select_area import draw_box_map
 
 import time
 
@@ -87,8 +91,8 @@ class DataObject:
         self.LatIndexer = dfVars.loc['Latitude']['Variable']
         self.TimeIndexer = dfVars.loc['Time']['Variable']
         self.LevelIndexer = dfVars.loc['Vertical Level']['Variable']
-        # When constructing object for eulerian analysis, the data can
-        # be sliced beforehand using the dfBox limits, but for the lagrangian
+        # When constructing object for Stationary analysis, the data can
+        # be sliced beforehand using the dfBox limits, but for the unstationary
         # analysis (dfBox not specified), we need full data and then it is
         # sliced for each timestep.
         if dfbox is None:
@@ -143,11 +147,11 @@ class DataObject:
         AdvHT = -1* ((self.u*dTdlambda/dx)+(self.v*dTdphi/dy)) 
         return AdvHT
 
-def LagrangianAnalysis(LagrangianObj):
+def UnstationaryAnalysis(UnstationaryObj):
     """
     Parameters
     ----------
-    LagrangianObj : DataObj
+    UnstationaryObj : DataObj
         Object containing meteorological data from a NetCDF file
 
     Returns
@@ -160,12 +164,13 @@ def LagrangianAnalysis(LagrangianObj):
     the Quasi-Geostrophic Thermodynamic Equation.
     """
     # Track file
-    trackfile = './inputs/track'
-    track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
+    if args.track:
+        trackfile = './inputs/track'
+        track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
     
-    timesteps = LagrangianObj.NetCDF_data[LagrangianObj.TimeIndexer]
+    timesteps = UnstationaryObj.NetCDF_data[UnstationaryObj.TimeIndexer]
     
-    PresLevels = LagrangianObj.Temperature[LagrangianObj.LevelIndexer].\
+    PresLevels = UnstationaryObj.Temperature[UnstationaryObj.LevelIndexer].\
         metpy.convert_units('hPa').values
     
     stored_terms = ['T_AA','Omega_AA','Q_AA', # average terms
@@ -182,98 +187,121 @@ def LagrangianAnalysis(LagrangianObj):
         # Get current time and time strings
         itime = str(t.values)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
+        
         # Get current time and box limits
-        min_lon, max_lon = track.loc[itime]['Lon']-7.5,track.loc[itime]['Lon']+7.5
-        min_lat, max_lat = track.loc[itime]['Lat']-7.5,track.loc[itime]['Lat']+7.5
+        if args.track:
+            min_lon, max_lon = track.loc[itime]['Lon']-7.5,track.loc[itime]['Lon']+7.5
+            min_lat, max_lat = track.loc[itime]['Lat']-7.5,track.loc[itime]['Lat']+7.5
+        elif args.choose:
+            iu_1000 = UnstationaryObj.u.sel({UnstationaryObj.TimeIndexer:t,
+                                           UnstationaryObj.LevelIndexer:1000})
+            iv_1000 = UnstationaryObj.u.sel({UnstationaryObj.TimeIndexer:t,
+                                           UnstationaryObj.LevelIndexer:1000})
+            igeop_1000 = UnstationaryObj.GeopotHeight.sel(
+                {UnstationaryObj.TimeIndexer:t,
+                 UnstationaryObj.LevelIndexer:1000})*g
+            iheight_1000 = geopotential_to_height(igeop_1000)
+            imslp = height_to_pressure_std(iheight_1000)
+            draw_box_map(iu_1000, iv_1000, imslp)
+            
         print('\nComputing terms for '+datestr+'...')
         print('Box limits (lon/lat): '+str(max_lon)+'/'+str(max_lat),
               ' '+str(min_lon)+'/'+str(min_lat))
+        
+        
         # Get closest grid point to actual track
-        WesternLimit = float(NetCDF_data[LagrangianObj.LonIndexer].sel(
-            {LagrangianObj.LonIndexer:min_lon}, method='nearest'))
-        EasternLimit =float( NetCDF_data[LagrangianObj.LonIndexer].sel(
-            {LagrangianObj.LonIndexer:max_lon}, method='nearest'))
-        SouthernLimit = float(NetCDF_data[LagrangianObj.LatIndexer].sel(
-            {LagrangianObj.LatIndexer:min_lat}, method='nearest'))
-        NorthernLimit = float(NetCDF_data[LagrangianObj.LatIndexer].sel(
-            {LagrangianObj.LatIndexer:max_lat}, method='nearest'))
+        WesternLimit = float(NetCDF_data[UnstationaryObj.LonIndexer].sel(
+            {UnstationaryObj.LonIndexer:min_lon}, method='nearest'))
+        EasternLimit =float( NetCDF_data[UnstationaryObj.LonIndexer].sel(
+            {UnstationaryObj.LonIndexer:max_lon}, method='nearest'))
+        SouthernLimit = float(NetCDF_data[UnstationaryObj.LatIndexer].sel(
+            {UnstationaryObj.LatIndexer:min_lat}, method='nearest'))
+        NorthernLimit = float(NetCDF_data[UnstationaryObj.LatIndexer].sel(
+            {UnstationaryObj.LatIndexer:max_lat}, method='nearest'))
     
         ## In the next code lines we will slice data for current timestep 
-        # and for the specifed box -> Lagrangian analysis.
+        # and for the specifed box -> Unstationary analysis.
         # ZA: zonal average (average through longitude circle)
         # AA: area average for the selected box
         # ZE: zonal eddy (value at each gridpoint minus its zonal average)
         # ZE_AA: zonal eddy avreaged in the selected box
         
         # Store area average and the averaged eddy component of temperature
-        T = LagrangianObj.Temperature.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        T = UnstationaryObj.Temperature.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         T_ZA = CalcZonalAverage(T)
         T_AA = CalcAreaAverage(T_ZA)
         T_ZE = T - T_ZA
         T_ZE_AA = CalcAreaAverage(T_ZE,ZonalAverage=True)
         dfDict['T_AA'][itime] = T_AA  
         dfDict['T_ZE_AA'][itime] = T_ZE_AA   
-        # plot_map(T,MapsDirectory,"T")
-        # plot_map(T_ZE,MapsDirectory,"T_ZE")
+        
         
         # Store area average and the averaged eddy component of omega
-        Omega = LagrangianObj.Omega.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        Omega = UnstationaryObj.Omega.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         Omega_ZA = CalcZonalAverage(Omega)
         Omega_AA = CalcAreaAverage(Omega_ZA)
         Omega_ZE = Omega - Omega_ZA
         Omega_ZE_AA = CalcAreaAverage(Omega_ZE,ZonalAverage=True)
         dfDict['Omega_AA'][itime] = Omega_AA
         dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA  
-        # plot_map(Omega,MapsDirectory,"Omega")
-        # plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
         
         # Store area average and the averaged eddy component of the adiabatic
         # heating
-        Q = LagrangianObj.AdiabaticHeating.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        Q = UnstationaryObj.AdiabaticHeating.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         Q_ZA = CalcZonalAverage(Q)
         Q_AA = CalcAreaAverage(Q_ZA)
         Q_ZE = Q - Q_ZA
         Q_ZE_AA = CalcAreaAverage(Q_ZE,ZonalAverage=True)
         dfDict['Q_AA'][itime] = Q_AA
         dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
+        
         # Plot maps of adiabatic heating term
         Q.name = "Q"
         Q['units'] = "J kg-1 s-1"
         plot_map(Q,MapsDirectory,"Q")
         Q_ZE.name = "Q'"
         Q_ZE['units'] = "J kg-1 s-1"
-        plot_map(Q_ZE,MapsDirectory,"Q_ZE")
         
         # Plot temperature x omega (eddies)
         TO_ZE = T_ZE*Omega_ZE
         TO_ZE.name = "T'ω'"
         TO_ZE['units'] = "K Pa-1 s-1"
-        plot_map(TO_ZE,MapsDirectory,"TOmega_ZE")
+        
         # Plot temperature x Q (eddies)
         TQ_ZE = T_ZE*Q_ZE
         TQ_ZE.name = "T'Q'"
         TQ_ZE['units'] = "J K kg-1 s-1"
-        plot_map(TQ_ZE,MapsDirectory,"TQ_ZE")
+        
+        if args.plot:
+            plot_map(Omega,MapsDirectory,"Omega")
+            plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
+            plot_map(T,MapsDirectory,"T")
+            plot_map(T_ZE,MapsDirectory,"T_ZE")
+            plot_map(Q_ZE,MapsDirectory,"Q_ZE")
+            plot_map(TO_ZE,MapsDirectory,"TOmega_ZE")
+            plot_map(TO_ZE,MapsDirectory,"TOmega_ZE")
+            plot_map(TQ_ZE,MapsDirectory,"TQ_ZE")
+
         
         # Store area average and of each thermodynamic equation
-        AdvHTemp = LagrangianObj.AdvHTemp.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        sigma = LagrangianObj.sigma.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        dTdt = LagrangianObj.dTdt.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        ResT = LagrangianObj.ResT.sel({LagrangianObj.TimeIndexer:t}).sel(
-            **{LagrangianObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               LagrangianObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        AdvHTemp = UnstationaryObj.AdvHTemp.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        sigma = UnstationaryObj.sigma.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        dTdt = UnstationaryObj.dTdt.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        ResT = UnstationaryObj.ResT.sel({UnstationaryObj.TimeIndexer:t}).sel(
+            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         
         # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
@@ -291,11 +319,11 @@ def LagrangianAnalysis(LagrangianObj):
     # Make timeseries
     os.system("python plot_timeseries.py "+ResultsSubDirectory)
     
-def EulerianAnalysis(EulerianObj):
+def StationaryAnalysis(StationaryObj):
     
-    timesteps = EulerianObj.NetCDF_data[EulerianObj.TimeIndexer]
+    timesteps = StationaryObj.NetCDF_data[StationaryObj.TimeIndexer]
     
-    PresLevels = EulerianObj.Temperature[EulerianObj.LevelIndexer].\
+    PresLevels = StationaryObj.Temperature[StationaryObj.LevelIndexer].\
         metpy.convert_units('hPa').values
         
     stored_terms = ['T_AA','Omega_AA','Q_AA', # average terms
@@ -308,7 +336,7 @@ def EulerianAnalysis(EulerianObj):
         index=[float(i) for i in PresLevels])
         
     # Store area average and the averaged eddy component of temperature
-    T = EulerianObj.Temperature
+    T = StationaryObj.Temperature
     T_ZA = CalcZonalAverage(T)
     T_AA = CalcAreaAverage(T_ZA)
     T_ZE = T - T_ZA
@@ -317,7 +345,7 @@ def EulerianAnalysis(EulerianObj):
     # plot_map(T_ZE,MapsDirectory,"T_ZE")
     
     # Store area average and the averaged eddy component of omega
-    Omega = EulerianObj.Omega
+    Omega = StationaryObj.Omega
     Omega_ZA = CalcZonalAverage(Omega)
     Omega_AA = CalcAreaAverage(Omega_ZA)
     Omega_ZE = Omega - Omega_ZA
@@ -328,7 +356,7 @@ def EulerianAnalysis(EulerianObj):
     
     # Store area average and the averaged eddy component of the adiabatic
     # heating
-    Q = EulerianObj.AdiabaticHeating
+    Q = StationaryObj.AdiabaticHeating
     Q_ZA = CalcZonalAverage(Q)
     Q_AA = CalcAreaAverage(Q_ZA)
     Q_ZE = Q - Q_ZA
@@ -340,45 +368,45 @@ def EulerianAnalysis(EulerianObj):
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         print("Storing results for: "+datestr)
         
-        dfDict['T_AA'][itime] = T_AA.sel({EulerianObj.TimeIndexer:t})
-        dfDict['T_ZE_AA'][itime] = T_ZE_AA.sel({EulerianObj.TimeIndexer:t})
-        dfDict['Omega_AA'][itime] = Omega_AA.sel({EulerianObj.TimeIndexer:t})
-        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA.sel({EulerianObj.TimeIndexer:t})
-        dfDict['Q_AA'][itime] = Q_AA.sel({EulerianObj.TimeIndexer:t})
-        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA.sel({EulerianObj.TimeIndexer:t})
+        dfDict['T_AA'][itime] = T_AA.sel({StationaryObj.TimeIndexer:t})
+        dfDict['T_ZE_AA'][itime] = T_ZE_AA.sel({StationaryObj.TimeIndexer:t})
+        dfDict['Omega_AA'][itime] = Omega_AA.sel({StationaryObj.TimeIndexer:t})
+        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA.sel({StationaryObj.TimeIndexer:t})
+        dfDict['Q_AA'][itime] = Q_AA.sel({StationaryObj.TimeIndexer:t})
+        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA.sel({StationaryObj.TimeIndexer:t})
           
         # Plot maps of adiabatic heating term
         Q.name = "Q"
         Q['units'] = "J kg-1 s-1"
-        # plot_map(Q.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"Q")
+        # plot_map(Q.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"Q")
         Q_ZE.name = "Q'"
         Q_ZE['units'] = "J kg-1 s-1"
-        # plot_map(Q_ZE.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"Q_ZE")
+        # plot_map(Q_ZE.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"Q_ZE")
         
         # Plot temperature x omega (eddies)
         TO_ZE = T_ZE*Omega_ZE
         TO_ZE.name = "T'ω'"
         TO_ZE['units'] = "K Pa-1 s-1"
-        # plot_map(TO_ZE.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"TOmega_ZE")
+        # plot_map(TO_ZE.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"TOmega_ZE")
         # Plot temperature x Q (eddies)
         TQ_ZE = T_ZE*Q_ZE
         TQ_ZE.name = "T'Q'"
         TQ_ZE['units'] = "J K kg-1 s-1"
-        # plot_map(TQ_ZE.sel({EulerianObj.TimeIndexer:t}),MapsDirectory,"TQ_ZE")
+        # plot_map(TQ_ZE.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"TQ_ZE")
         
         # Store area averages for each term of the thermodynamic equation
-        dfDict['AdvHTemp'][itime] = CalcAreaAverage(EulerianObj.AdvHTemp.sel(
-            {EulerianObj.TimeIndexer:t}),
+        dfDict['AdvHTemp'][itime] = CalcAreaAverage(StationaryObj.AdvHTemp.sel(
+            {StationaryObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-        dfDict['SpOmega'][itime] = CalcAreaAverage(EulerianObj.sigma.sel(
-            {EulerianObj.TimeIndexer:t})*
-            Omega.sel({EulerianObj.TimeIndexer:t}),
+        dfDict['SpOmega'][itime] = CalcAreaAverage(StationaryObj.sigma.sel(
+            {StationaryObj.TimeIndexer:t})*
+            Omega.sel({StationaryObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-        dfDict['dTdt'][itime] = CalcAreaAverage(EulerianObj.dTdt.sel(
-            {EulerianObj.TimeIndexer:t}),
+        dfDict['dTdt'][itime] = CalcAreaAverage(StationaryObj.dTdt.sel(
+            {StationaryObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-        dfDict['ResT'][itime] = CalcAreaAverage(EulerianObj.ResT.sel(
-            {EulerianObj.TimeIndexer:t}),
+        dfDict['ResT'][itime] = CalcAreaAverage(StationaryObj.ResT.sel(
+            {StationaryObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
                                                  
     # Save CSV files with all the terms stored above
@@ -392,9 +420,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "\
 Program for analysing the thermodynamics of a cyclone. \
 The program can use two distinct frameworks:\n\
-    1) Eulerian framework. A box is definid in the box_lims' file and then the\
- energetics are computed for a fixed domain. (NOT IMPLEMENTED YET!)\
-    2) Lagrangian framework. The domain is not fixed and follows the system \
+    1) Stationary framework. A box is definid in the box_lims' file and then the\
+ energetics are computed for a Stationary domain. (NOT IMPLEMENTED YET!)\
+    2) Unstationary framework. The domain is not Stationary and follows the system \
 using the 'track' file.\
 Both frameworks can be applied at the same time, given the required files are\
 provided. An auxilliary 'fvars' file is also needed for both frameworks. \
@@ -403,14 +431,22 @@ are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
 ../ and it also creates figures for visualising the results.")
     parser.add_argument("infile", help = "input .nc file with temperature,\
    meridional, zonal and vertical components of the wind, in pressure levels")
-    parser.add_argument("-e", "--eulerian", default = False,
-    action='store_true', help = "compute the energetics for a fixed domain\
- specified by the 'inputs/box_lims' file. (NOT IMPLEMENTED YET!)")
-    parser.add_argument("-l", "--lagrangian", default = False,
-    action='store_true', help = "compute the energetics following the system\
- as specified in the 'inputs/track' file")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-f", "--Stationary", default = False,
+    action='store_true', help = "compute the energetics for a Stationary domain\
+ specified by the 'inputs/box_lims' file.")
+    group.add_argument("-t", "--track", default = False,
+    action='store_true', help = "define the box using a track file specified \
+by the 'inputs/track' file. The track indicate the central point of the system\
+and a arbitraty box of 15°x15° is constructed.")
+    group.add_argument("-c", "--choose", default = False,
+    action='store_true', help = "For each time step, the user can choose the\
+domain by clicking on the screen.")
     parser.add_argument("-m", "--multiple", default = False,
     action='store_true', help = "open multiple files at once")
+    parser.add_argument("-p", "--plots", default = False,
+    action='store_true', help = "create default plots")
+    
     args = parser.parse_args()
     
     start_time = time.time()
@@ -466,14 +502,14 @@ are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
     check_create_folder(MapsDirectory)
     
     # Run the program
-    if args.eulerian:
-        print('Running eulerian framework.')
+    if args.Stationary:
+        print('Running Stationary framework.')
         dfbox = pd.read_csv('./inputs/box_limits',header=None,delimiter=';',index_col=0)
-        EulerianObj = DataObject(NetCDF_data,dfVars,dfbox)
-        EulerianAnalysis(EulerianObj)
-        print("--- %s seconds running eulerian framework ---" % (time.time() - start_time))
-    if args.lagrangian:
-        print('Running lagrangian framework.')
-        LagrangianObj = DataObject(NetCDF_data,dfVars)
-        LagrangianAnalysis(LagrangianObj)
-        print("--- %s seconds for running lagrangian framework ---" % (time.time() - start_time))            
+        StationaryObj = DataObject(NetCDF_data,dfVars,dfbox)
+        StationaryAnalysis(StationaryObj)
+        print("--- %s seconds running Stationary framework ---" % (time.time() - start_time))
+    if args.track or args.choose:
+        print('Running unstationary framework.')
+        UnstationaryObj = DataObject(NetCDF_data,dfVars)
+        UnstationaryAnalysis(UnstationaryObj)
+        print("--- %s seconds for running Unstationary framework ---" % (time.time() - start_time))            
