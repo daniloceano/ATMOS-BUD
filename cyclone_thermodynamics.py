@@ -31,6 +31,7 @@ import argparse
 from calc import CalcAreaAverage, CalcZonalAverage
 from plot_maps import LagrangianMaps as plot_map
 from select_area import draw_box_map
+from select_area import initial_domain
 
 import time
 
@@ -147,7 +148,7 @@ class DataObject:
         AdvHT = -1* ((self.u*dTdlambda/dx)+(self.v*dTdphi/dy)) 
         return AdvHT
 
-def UnstationaryAnalysis(UnstationaryObj):
+def UnstationaryAnalysis(UnstationaryObj,args):
     """
     Parameters
     ----------
@@ -188,10 +189,11 @@ def UnstationaryAnalysis(UnstationaryObj):
         itime = str(t.values)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         
-        # Get current time and box limits
         if args.track:
+            # Get current time and box limits
             min_lon, max_lon = track.loc[itime]['Lon']-7.5,track.loc[itime]['Lon']+7.5
             min_lat, max_lat = track.loc[itime]['Lat']-7.5,track.loc[itime]['Lat']+7.5
+            
         elif args.choose:
             iu_1000 = UnstationaryObj.u.sel({UnstationaryObj.TimeIndexer:t,
                                            UnstationaryObj.LevelIndexer:1000})
@@ -202,13 +204,40 @@ def UnstationaryAnalysis(UnstationaryObj):
                  UnstationaryObj.LevelIndexer:1000})*g
             iheight_1000 = geopotential_to_height(igeop_1000)
             imslp = height_to_pressure_std(iheight_1000)
-            draw_box_map(iu_1000, iv_1000, imslp)
+            lat = iu_1000[UnstationaryObj.LatIndexer]
+            lon = iu_1000[UnstationaryObj.LonIndexer]
+            
+            # Select initial domain so its easier to see the systems on the map
+            if t == timesteps[0]:
+                domain_limits = initial_domain(imslp, lat, lon)
+
+            iu_1000 = iu_1000.sel({UnstationaryObj.LatIndexer:slice(
+                domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
+                UnstationaryObj.LonIndexer:slice(
+                    domain_limits['min_lon'],domain_limits['max_lon'])})
+            iv_1000 = iv_1000.sel({UnstationaryObj.LatIndexer:slice(
+                domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
+                UnstationaryObj.LonIndexer:slice(
+                    domain_limits['min_lon'],domain_limits['max_lon'])})
+            imslp = imslp.sel({UnstationaryObj.LatIndexer:slice(
+                domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
+                UnstationaryObj.LonIndexer:slice(
+                    domain_limits['min_lon'],domain_limits['max_lon'])})
+            lat = iu_1000[UnstationaryObj.LatIndexer]
+            lon = iu_1000[UnstationaryObj.LonIndexer]
+            
+            # Draw maps and ask user to specify corners for specifying the box
+            limits = draw_box_map(iu_1000, iv_1000, imslp, lat, lon,
+                                  itime, domain_limits)
+            max_lon, min_lon = limits['max_lon'], limits['min_lon']
+            max_lat, min_lat = limits['max_lat'], limits['min_lat']
+            
             
         print('\nComputing terms for '+datestr+'...')
         print('Box limits (lon/lat): '+str(max_lon)+'/'+str(max_lat),
               ' '+str(min_lon)+'/'+str(min_lat))
         
-        
+        NetCDF_data = UnstationaryObj.NetCDF_data
         # Get closest grid point to actual track
         WesternLimit = float(NetCDF_data[UnstationaryObj.LonIndexer].sel(
             {UnstationaryObj.LonIndexer:min_lon}, method='nearest'))
@@ -261,24 +290,22 @@ def UnstationaryAnalysis(UnstationaryObj):
         dfDict['Q_AA'][itime] = Q_AA
         dfDict['Q_ZE_AA'][itime] = Q_ZE_AA
         
-        # Plot maps of adiabatic heating term
         Q.name = "Q"
         Q['units'] = "J kg-1 s-1"
-        plot_map(Q,MapsDirectory,"Q")
+        
         Q_ZE.name = "Q'"
         Q_ZE['units'] = "J kg-1 s-1"
         
-        # Plot temperature x omega (eddies)
         TO_ZE = T_ZE*Omega_ZE
         TO_ZE.name = "T'ω'"
         TO_ZE['units'] = "K Pa-1 s-1"
         
-        # Plot temperature x Q (eddies)
         TQ_ZE = T_ZE*Q_ZE
         TQ_ZE.name = "T'Q'"
         TQ_ZE['units'] = "J K kg-1 s-1"
         
-        if args.plot:
+        if args.plots:
+            plot_map(Q,MapsDirectory,"Q")
             plot_map(Omega,MapsDirectory,"Omega")
             plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
             plot_map(T,MapsDirectory,"T")
@@ -511,5 +538,5 @@ domain by clicking on the screen.")
     if args.track or args.choose:
         print('Running unstationary framework.')
         UnstationaryObj = DataObject(NetCDF_data,dfVars)
-        UnstationaryAnalysis(UnstationaryObj)
+        UnstationaryAnalysis(UnstationaryObj,args)
         print("--- %s seconds for running Unstationary framework ---" % (time.time() - start_time))            
