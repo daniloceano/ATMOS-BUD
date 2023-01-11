@@ -19,6 +19,8 @@ from metpy.constants import Cp_d
 from metpy.constants import Re
 from metpy.calc import potential_temperature
 from metpy.calc import geopotential_to_height
+from metpy.calc import height_to_pressure_std
+from metpy.calc import altimeter_to_sea_level_pressure
 from metpy.calc import wind_speed
 from metpy.constants import g
 
@@ -77,23 +79,34 @@ def convert_lon(xr,LonIndexer):
     xr = xr.sortby(xr[LonIndexer])
     return xr
 
-def choose_domain_analysis(UnstationaryObj, position, t, domain_limits):
+def choose_domain_analysis(MovingObj, position, t, domain_limits):
     
     itime = str(t.values)
     
-    iu_1000 = UnstationaryObj.u.sel({UnstationaryObj.TimeIndexer:t,
-                                   UnstationaryObj.LevelIndexer:1000})
-    iv_1000 = UnstationaryObj.v.sel({UnstationaryObj.TimeIndexer:t,
-                                   UnstationaryObj.LevelIndexer:1000})
-    igeop_1000 = UnstationaryObj.GeopotHeight.sel(
-        {UnstationaryObj.TimeIndexer:t,
-         UnstationaryObj.LevelIndexer:1000})*g
+    iu_1000 = MovingObj.u.sel({MovingObj.TimeIndexer:t,
+                                   MovingObj.LevelIndexer:1000})
+    iv_1000 = MovingObj.v.sel({MovingObj.TimeIndexer:t,
+                                   MovingObj.LevelIndexer:1000})
+    # Geopotential from geopotential height
+    igeop_1000 = MovingObj.GeopotHeight.sel(
+        {MovingObj.TimeIndexer:t,
+         MovingObj.LevelIndexer:1000})*g
     iheight_1000 = geopotential_to_height(igeop_1000)
     
-    lat = iu_1000[UnstationaryObj.LatIndexer]
-    lon = iu_1000[UnstationaryObj.LonIndexer]
+    lat = iu_1000[MovingObj.LatIndexer]
+    lon = iu_1000[MovingObj.LonIndexer]
+    
+    # # Reduce to sea level pressure
+    # it_1000 = MovingObj.Temperature.sel({MovingObj.TimeIndexer:t,
+    #                                MovingObj.LevelIndexer:1000})
+    # ip_1000 = it_1000[MovingObj.LevelIndexer].expand_dims(
+    #     {MovingObj.LatIndexer:it_1000[MovingObj.LatIndexer],
+    #      MovingObj.LonIndexer:it_1000[MovingObj.LonIndexer]}
+    #     )*units(it_1000[MovingObj.LevelIndexer].units)
+    # imslp = altimeter_to_sea_level_pressure(ip_1000, iheight_1000, it_1000)
     
     # imslp = height_to_pressure_std(iheight_1000)
+    
     imslp = iheight_1000.copy()
     
     # Select initial domain so its easier to see the systems on the map
@@ -102,20 +115,20 @@ def choose_domain_analysis(UnstationaryObj, position, t, domain_limits):
     else:
         domain_limits = domain_limits
         
-    iu_1000 = iu_1000.sel({UnstationaryObj.LatIndexer:slice(
+    iu_1000 = iu_1000.sel({MovingObj.LatIndexer:slice(
         domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
-        UnstationaryObj.LonIndexer:slice(
+        MovingObj.LonIndexer:slice(
             domain_limits['min_lon'],domain_limits['max_lon'])})
-    iv_1000 = iv_1000.sel({UnstationaryObj.LatIndexer:slice(
+    iv_1000 = iv_1000.sel({MovingObj.LatIndexer:slice(
         domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
-        UnstationaryObj.LonIndexer:slice(
+        MovingObj.LonIndexer:slice(
             domain_limits['min_lon'],domain_limits['max_lon'])})
-    imslp = imslp.sel({UnstationaryObj.LatIndexer:slice(
+    imslp = imslp.sel({MovingObj.LatIndexer:slice(
         domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
-        UnstationaryObj.LonIndexer:slice(
+        MovingObj.LonIndexer:slice(
             domain_limits['min_lon'],domain_limits['max_lon'])})
-    lat = iu_1000[UnstationaryObj.LatIndexer]
-    lon = iu_1000[UnstationaryObj.LonIndexer]
+    lat = iu_1000[MovingObj.LatIndexer]
+    lon = iu_1000[MovingObj.LonIndexer]
     
     # Draw maps and ask user to specify corners for specifying the box
     limits = draw_box_map(iu_1000, iv_1000, imslp, lat, lon,
@@ -158,8 +171,8 @@ class DataObject:
         self.LatIndexer = dfVars.loc['Latitude']['Variable']
         self.TimeIndexer = dfVars.loc['Time']['Variable']
         self.LevelIndexer = dfVars.loc['Vertical Level']['Variable']
-        # When constructing object for Stationary analysis, the data can
-        # be sliced beforehand using the dfBox limits, but for the unstationary
+        # When constructing object for Fixed analysis, the data can
+        # be sliced beforehand using the dfBox limits, but for the Moving
         # analysis (dfBox not specified), we need full data and then it is
         # sliced for each timestep.
         if dfbox is None:
@@ -188,8 +201,14 @@ class DataObject:
             * units(dfVars.loc['Northward Wind Component']['Units']).to('m/s')
         self.Omega = self.NetCDF_data[dfVars.loc['Omega Velocity']['Variable']] \
             * units(dfVars.loc['Omega Velocity']['Units']).to('Pa/s')
-        self.GeopotHeight = self.NetCDF_data[dfVars.loc['Geopotential Height']['Variable']] \
-            * units(dfVars.loc['Geopotential Height']['Units']).to('gpm')
+        if 'Geopotential Height' in dfVars.index:
+            self.GeopotHeight = self.NetCDF_data[dfVars.loc[
+                'Geopotential Height']['Variable']] * units(dfVars.loc[
+                    'Geopotential Height']['Units']).to('gpm')
+        else:
+            self.GeopotHeight = (self.NetCDF_data[dfVars.loc[
+                'Geopotential']['Variable']] * units(dfVars.loc[
+                    'Geopotential']['Units']).to('m**2/s**2'))/g
         self.Pressure = self.NetCDF_data[self.LevelIndexer]
         self.Theta = theta = potential_temperature(
             self.Pressure,self.Temperature)
@@ -214,11 +233,11 @@ class DataObject:
         AdvHT = -1* ((self.u*dTdlambda/dx)+(self.v*dTdphi/dy)) 
         return AdvHT
 
-def UnstationaryAnalysis(UnstationaryObj,args):
+def MovingAnalysis(MovingObj,args):
     """
     Parameters
     ----------
-    UnstationaryObj : DataObj
+    MovingObj : DataObj
         Object containing meteorological data from a NetCDF file
 
     Returns
@@ -240,8 +259,8 @@ def UnstationaryAnalysis(UnstationaryObj,args):
     # Dictionary to save DataArray results and transform into nc later
     results_nc = {}
     
-    timesteps = UnstationaryObj.NetCDF_data[UnstationaryObj.TimeIndexer]
-    pres_levels = UnstationaryObj.Temperature[UnstationaryObj.LevelIndexer].\
+    timesteps = MovingObj.NetCDF_data[MovingObj.TimeIndexer]
+    pres_levels = MovingObj.Temperature[MovingObj.LevelIndexer].\
         metpy.convert_units('hPa').values
     
     # Create a dictionary for saving area averages of each term
@@ -259,52 +278,60 @@ def UnstationaryAnalysis(UnstationaryObj,args):
         
         if args.track:
             # Get current time and box limits
-            min_lon, max_lon = track.loc[itime]['Lon']-7.5,track.loc[itime]['Lon']+7.5
-            min_lat, max_lat = track.loc[itime]['Lat']-7.5,track.loc[itime]['Lat']+7.5
+            if 'dx'in track.columns:
+                dx, dy = track.loc[itime]['dx'],track.loc[itime]['dy']
+            else:
+                dx, dy = 7.5, 7.5
+            min_lon = track.loc[itime]['Lon']-dx
+            max_lon = track.loc[itime]['Lon']+dx
+            min_lat = track.loc[itime]['Lat']-dy
+            max_lat = track.loc[itime]['Lat']+dy
             
         elif args.choose:
             if t == timesteps[0]:
                 position, limits, domain_limits = choose_domain_analysis(
-                UnstationaryObj, position, t, None)
+                MovingObj, position, t, None)
             else:
                 position, limits, domain_limits = choose_domain_analysis(
-                UnstationaryObj, position, t, domain_limits)
+                MovingObj, position, t, domain_limits)
+            dx, dy = position['dx'][-1],position['dy'][-1]
             min_lon, max_lon = limits['min_lon'],  limits['max_lon']
             min_lat, max_lat = limits['min_lat'],  limits['max_lat']
             
         print('\nComputing terms for '+datestr+'...')
-        print('Box limits (lon/lat): '+str(max_lon)+'/'+str(max_lat),
-              ' '+str(min_lon)+'/'+str(min_lat))
+        print('Box min_lon, max_lon: '+str(min_lon)+'/'+str(max_lon))
+        print('Box min_lat, max_lat: '+str(min_lat)+'/'+str(max_lat))
+        print('Box size (longitude): '+str(dx*2))
+        print('Box size (latitude): '+str(dy*2))
         
-        
-        NetCDF_data = UnstationaryObj.NetCDF_data
+        NetCDF_data = MovingObj.NetCDF_data
         # Get closest grid point to actual track
-        WesternLimit = float(NetCDF_data[UnstationaryObj.LonIndexer].sel(
-            {UnstationaryObj.LonIndexer:min_lon}, method='nearest'))
-        EasternLimit =float( NetCDF_data[UnstationaryObj.LonIndexer].sel(
-            {UnstationaryObj.LonIndexer:max_lon}, method='nearest'))
-        SouthernLimit = float(NetCDF_data[UnstationaryObj.LatIndexer].sel(
-            {UnstationaryObj.LatIndexer:min_lat}, method='nearest'))
-        NorthernLimit = float(NetCDF_data[UnstationaryObj.LatIndexer].sel(
-            {UnstationaryObj.LatIndexer:max_lat}, method='nearest'))
+        WesternLimit = float(NetCDF_data[MovingObj.LonIndexer].sel(
+            {MovingObj.LonIndexer:min_lon}, method='nearest'))
+        EasternLimit =float( NetCDF_data[MovingObj.LonIndexer].sel(
+            {MovingObj.LonIndexer:max_lon}, method='nearest'))
+        SouthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
+            {MovingObj.LatIndexer:min_lat}, method='nearest'))
+        NorthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
+            {MovingObj.LatIndexer:max_lat}, method='nearest'))
     
-        sigma = UnstationaryObj.sigma.sel({UnstationaryObj.TimeIndexer:t}).sel(
-            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        omega = UnstationaryObj.Omega.sel({UnstationaryObj.TimeIndexer:t}).sel(
-            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        sigma = MovingObj.sigma.sel({MovingObj.TimeIndexer:t}).sel(
+            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        omega = MovingObj.Omega.sel({MovingObj.TimeIndexer:t}).sel(
+            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         
         # Compute each term of the thermodynamic equation
-        AdvHTemp = UnstationaryObj.AdvHTemp.sel({UnstationaryObj.TimeIndexer:t}).sel(
-            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        dTdt = UnstationaryObj.dTdt.sel({UnstationaryObj.TimeIndexer:t}).sel(
-            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        ResT = UnstationaryObj.ResT.sel({UnstationaryObj.TimeIndexer:t}).sel(
-            **{UnstationaryObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               UnstationaryObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        AdvHTemp = MovingObj.AdvHTemp.sel({MovingObj.TimeIndexer:t}).sel(
+            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        dTdt = MovingObj.dTdt.sel({MovingObj.TimeIndexer:t}).sel(
+            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
+        ResT = MovingObj.ResT.sel({MovingObj.TimeIndexer:t}).sel(
+            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
+               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         SpOmega = omega * sigma
         
         term_results = [AdvHTemp,SpOmega,dTdt,ResT]
@@ -325,7 +352,7 @@ def UnstationaryAnalysis(UnstationaryObj,args):
     dict_nc = {}
     for term in stored_terms:
         dict_nc[term] = xr.concat(
-            results_nc[term],dim=UnstationaryObj.TimeIndexer)
+            results_nc[term],dim=MovingObj.TimeIndexer)
     out_nc = xr.merge([dict_nc])
     fname = ResultsSubDirectory+ outfile_name+'.nc'
     out_nc.to_netcdf(fname)
@@ -335,19 +362,21 @@ def UnstationaryAnalysis(UnstationaryObj,args):
     for term in stored_terms:
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
         
-    # Save system position as a csv file for replicability
-    track = pd.DataFrame.from_dict(position)
-    track.to_csv(ResultsSubDirectory+outfile_name+'_track',
-                 index=False, sep=";")
+    if args.choose:
+        # Save system position as a csv file for replicability
+        track = pd.DataFrame.from_dict(position)
+        track = track.rename(columns={'central_lat':'Lat','central_lon':'Lon'})
+        track.to_csv(ResultsSubDirectory+outfile_name+'_track',
+                     index=False, sep=";")
 
     # Make timeseries
     #os.system("python plot_timeseries.py "+ResultsSubDirectory)
     
-def StationaryAnalysis(StationaryObj):
+def FixedAnalysis(FixedObj):
     
-    timesteps = StationaryObj.NetCDF_data[StationaryObj.TimeIndexer]
+    timesteps = FixedObj.NetCDF_data[FixedObj.TimeIndexer]
     
-    pres_levels = StationaryObj.Temperature[StationaryObj.LevelIndexer].\
+    pres_levels = FixedObj.Temperature[FixedObj.LevelIndexer].\
         metpy.convert_units('hPa').values
         
     stored_terms = ['T_AA','Omega_AA','Q_AA', # average terms
@@ -360,7 +389,7 @@ def StationaryAnalysis(StationaryObj):
         index=[float(i) for i in pres_levels])
         
     # Store area average and the averaged eddy component of temperature
-    T = StationaryObj.Temperature
+    T = FixedObj.Temperature
     T_ZA = CalcZonalAverage(T)
     T_AA = CalcAreaAverage(T_ZA)
     T_ZE = T - T_ZA
@@ -369,7 +398,7 @@ def StationaryAnalysis(StationaryObj):
     # plot_map(T_ZE,MapsDirectory,"T_ZE")
     
     # Store area average and the averaged eddy component of omega
-    Omega = StationaryObj.Omega
+    Omega = FixedObj.Omega
     Omega_ZA = CalcZonalAverage(Omega)
     Omega_AA = CalcAreaAverage(Omega_ZA)
     Omega_ZE = Omega - Omega_ZA
@@ -380,7 +409,7 @@ def StationaryAnalysis(StationaryObj):
     
     # Store area average and the averaged eddy component of the adiabatic
     # heating
-    Q = StationaryObj.AdiabaticHeating
+    Q = FixedObj.AdiabaticHeating
     Q_ZA = CalcZonalAverage(Q)
     Q_AA = CalcAreaAverage(Q_ZA)
     Q_ZE = Q - Q_ZA
@@ -392,45 +421,45 @@ def StationaryAnalysis(StationaryObj):
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         print("Storing results for: "+datestr)
         
-        dfDict['T_AA'][itime] = T_AA.sel({StationaryObj.TimeIndexer:t})
-        dfDict['T_ZE_AA'][itime] = T_ZE_AA.sel({StationaryObj.TimeIndexer:t})
-        dfDict['Omega_AA'][itime] = Omega_AA.sel({StationaryObj.TimeIndexer:t})
-        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA.sel({StationaryObj.TimeIndexer:t})
-        dfDict['Q_AA'][itime] = Q_AA.sel({StationaryObj.TimeIndexer:t})
-        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA.sel({StationaryObj.TimeIndexer:t})
+        dfDict['T_AA'][itime] = T_AA.sel({FixedObj.TimeIndexer:t})
+        dfDict['T_ZE_AA'][itime] = T_ZE_AA.sel({FixedObj.TimeIndexer:t})
+        dfDict['Omega_AA'][itime] = Omega_AA.sel({FixedObj.TimeIndexer:t})
+        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA.sel({FixedObj.TimeIndexer:t})
+        dfDict['Q_AA'][itime] = Q_AA.sel({FixedObj.TimeIndexer:t})
+        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA.sel({FixedObj.TimeIndexer:t})
           
         # Plot maps of adiabatic heating term
         Q.name = "Q"
         Q['units'] = "J kg-1 s-1"
-        # plot_map(Q.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"Q")
+        # plot_map(Q.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"Q")
         Q_ZE.name = "Q'"
         Q_ZE['units'] = "J kg-1 s-1"
-        # plot_map(Q_ZE.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"Q_ZE")
+        # plot_map(Q_ZE.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"Q_ZE")
         
         # Plot temperature x omega (eddies)
         TO_ZE = T_ZE*Omega_ZE
         TO_ZE.name = "T'ω'"
         TO_ZE['units'] = "K Pa-1 s-1"
-        # plot_map(TO_ZE.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"TOmega_ZE")
+        # plot_map(TO_ZE.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"TOmega_ZE")
         # Plot temperature x Q (eddies)
         TQ_ZE = T_ZE*Q_ZE
         TQ_ZE.name = "T'Q'"
         TQ_ZE['units'] = "J K kg-1 s-1"
-        # plot_map(TQ_ZE.sel({StationaryObj.TimeIndexer:t}),MapsDirectory,"TQ_ZE")
+        # plot_map(TQ_ZE.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"TQ_ZE")
         
         # Store area averages for each term of the thermodynamic equation
-        dfDict['AdvHTemp'][itime] = CalcAreaAverage(StationaryObj.AdvHTemp.sel(
-            {StationaryObj.TimeIndexer:t}),
+        dfDict['AdvHTemp'][itime] = CalcAreaAverage(FixedObj.AdvHTemp.sel(
+            {FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-        dfDict['SpOmega'][itime] = CalcAreaAverage(StationaryObj.sigma.sel(
-            {StationaryObj.TimeIndexer:t})*
-            Omega.sel({StationaryObj.TimeIndexer:t}),
+        dfDict['SpOmega'][itime] = CalcAreaAverage(FixedObj.sigma.sel(
+            {FixedObj.TimeIndexer:t})*
+            Omega.sel({FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-        dfDict['dTdt'][itime] = CalcAreaAverage(StationaryObj.dTdt.sel(
-            {StationaryObj.TimeIndexer:t}),
+        dfDict['dTdt'][itime] = CalcAreaAverage(FixedObj.dTdt.sel(
+            {FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-        dfDict['ResT'][itime] = CalcAreaAverage(StationaryObj.ResT.sel(
-            {StationaryObj.TimeIndexer:t}),
+        dfDict['ResT'][itime] = CalcAreaAverage(FixedObj.ResT.sel(
+            {FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
                                                  
     # Save CSV files with all the terms stored above
@@ -444,9 +473,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "\
 Program for analysing the thermodynamics of a cyclone. \
 The program can use two distinct frameworks:\n\
-    1) Stationary framework. A box is definid in the box_lims' file and then the\
- energetics are computed for a Stationary domain. (NOT IMPLEMENTED YET!)\
-    2) Unstationary framework. The domain is not Stationary and follows the system \
+    1) Fixed framework. A box is definid in the box_lims' file and then the\
+ energetics are computed for a Fixed domain. (NOT IMPLEMENTED YET!)\
+    2) Moving framework. The domain is not Fixed and follows the system \
 using the 'track' file.\
 Both frameworks can be applied at the same time, given the required files are\
 provided. An auxilliary 'fvars' file is also needed for both frameworks. \
@@ -456,8 +485,8 @@ are stored as csv files in the 'CycloneThermodynamics_Results' directory on \
     parser.add_argument("infile", help = "input .nc file with temperature,\
    meridional, zonal and vertical components of the wind, in pressure levels")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-f", "--Stationary", default = False,
-    action='store_true', help = "compute the energetics for a Stationary domain\
+    group.add_argument("-f", "--fixed", default = False,
+    action='store_true', help = "compute the energetics for a Fixed domain\
  specified by the 'inputs/box_lims' file.")
     group.add_argument("-t", "--track", default = False,
     action='store_true', help = "define the box using a track file specified \
@@ -512,7 +541,12 @@ domain by clicking on the screen.")
     # Directory where results will be stored
     ResultsMainDirectory = './Results/'
     # Append data method to outfile name
-    outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_unstationary'
+    if args.fixed:
+        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_fixed'
+    elif args.track:
+        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_track'
+    elif args.choose:
+        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_choose'
     # Each dataset of results have its own directory, allowing to store results
     # from more than one experiment at each time
     ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
@@ -526,14 +560,14 @@ domain by clicking on the screen.")
     check_create_folder(MapsDirectory)
     
     # Run the program
-    if args.Stationary:
-        print('Running Stationary framework.')
+    if args.fixed:
+        print('Running Fixed framework.')
         dfbox = pd.read_csv('./inputs/box_limits',header=None,delimiter=';',index_col=0)
-        StationaryObj = DataObject(NetCDF_data,dfVars,dfbox)
-        StationaryAnalysis(StationaryObj)
-        print("--- %s seconds running Stationary framework ---" % (time.time() - start_time))
+        FixedObj = DataObject(NetCDF_data,dfVars,dfbox)
+        FixedAnalysis(FixedObj)
+        print("--- %s seconds running Fixed framework ---" % (time.time() - start_time))
     if args.track or args.choose:
-        print('Running unstationary framework.')
-        UnstationaryObj = DataObject(NetCDF_data,dfVars)
-        UnstationaryAnalysis(UnstationaryObj,args)
-        print("--- %s seconds for running Unstationary framework ---" % (time.time() - start_time))            
+        print('Running Moving framework.')
+        MovingObj = DataObject(NetCDF_data,dfVars)
+        MovingAnalysis(MovingObj,args)
+        print("--- %s seconds for running Moving framework ---" % (time.time() - start_time))            
