@@ -3,7 +3,14 @@
 """
 Created on Fri Jan  6 12:33:00 2023
 
-@author: danilocoutodsouza
+Created by:
+    Danilo Couto de Souza
+    Universidade de São Paulo (USP)
+    Instituto de Astornomia, Ciências Atmosféricas e Geociências
+    São Paulo - Brazil
+
+Contact:
+    danilo.oceano@gmail.com
 """
 
 import matplotlib.pyplot as plt
@@ -49,6 +56,15 @@ def plot_slp(ax, slp, lat, lon):
     ax.contour(lon, lat, slp, cf1.levels,colors='#383838',
                linewidths=0.25,transform=crs_longlat)
     
+def map_decorators(ax):
+    ax.coastlines()
+    gl = ax.gridlines(draw_labels=True,zorder=2,linestyle='dashed',alpha=0.8,
+                 color='#383838')
+    gl.xlabel_style = {'size': 14, 'color': '#383838'}
+    gl.ylabel_style = {'size': 14, 'color': '#383838'}
+    gl.top_labels = None
+    gl.right_labels = None
+    
 def plot_min_slp(ax,slp, lat, lon, limits):
     max_lon, min_lon = limits['max_lon'], limits['min_lon']
     max_lat, min_lat = limits['max_lat'], limits['min_lat']
@@ -82,7 +98,7 @@ def initial_domain(slp, lat, lon):
     fig.add_axes(ax)
     ax.set_global()
     plot_slp(ax, slp, lat, lon)
-    ax.coastlines()
+    map_decorators(ax)
     plt.subplots_adjust(bottom=0, top=1.2)
     
     while True:
@@ -124,7 +140,7 @@ def draw_box_map(u, v, slp, lat, lon, timestr, domain_limits):
     plot_slp(ax, slp, lat, lon)
     ax.quiver(lon.values, lat.values, u.values, v.values,
               transform=crs_longlat)
-    ax.coastlines()
+    map_decorators(ax)
     
     while True:
         pts = []

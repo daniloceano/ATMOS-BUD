@@ -30,9 +30,12 @@ import os
 import numpy as np
 import argparse
 
-from calc import CalcAreaAverage, CalcZonalAverage
+from calc import CalcAreaAverage
 from select_area import draw_box_map
 from select_area import initial_domain
+
+from plot_domains import plot_fixed_domain
+from plot_domains import plot_track
 
 import time
 
@@ -251,7 +254,7 @@ def MovingAnalysis(MovingObj,args):
     """
     # Track file
     if args.track:
-        trackfile = './inputs/track'
+        trackfile = '../inputs/track'
         track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
     else:
         position = {}
@@ -369,6 +372,7 @@ def MovingAnalysis(MovingObj,args):
         track.to_csv(ResultsSubDirectory+outfile_name+'_track',
                      index=False, sep=";")
 
+    plot_track(track, FigsDirectory)
     # Make timeseries
     #os.system("python plot_timeseries.py "+ResultsSubDirectory)
     
@@ -379,81 +383,31 @@ def FixedAnalysis(FixedObj):
     pres_levels = FixedObj.Temperature[FixedObj.LevelIndexer].\
         metpy.convert_units('hPa').values
         
-    stored_terms = ['T_AA','Omega_AA','Q_AA', # average terms
-                    'T_ZE_AA','Omega_ZE_AA','Q_ZE_AA', # eddy terms (averaged)
-                    'AdvHTemp','SpOmega','dTdt','ResT'] # thermodyn. eq. terms
+    stored_terms = ['AdvHTemp','SpOmega','dTdt','ResT'] # thermodyn. eq. terms
+    
+    # Dictionary to save DataArray results and transform into nc later
+    results_nc = {}
     
     dfDict = {}
     for term in stored_terms:
         dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
         index=[float(i) for i in pres_levels])
+        results_nc[term] = []
         
-    # Store area average and the averaged eddy component of temperature
-    T = FixedObj.Temperature
-    T_ZA = CalcZonalAverage(T)
-    T_AA = CalcAreaAverage(T_ZA)
-    T_ZE = T - T_ZA
-    T_ZE_AA = CalcAreaAverage(T_ZE,ZonalAverage=True)
-    # plot_map(T,MapsDirectory,"T")
-    # plot_map(T_ZE,MapsDirectory,"T_ZE")
-    
-    # Store area average and the averaged eddy component of omega
-    Omega = FixedObj.Omega
-    Omega_ZA = CalcZonalAverage(Omega)
-    Omega_AA = CalcAreaAverage(Omega_ZA)
-    Omega_ZE = Omega - Omega_ZA
-    Omega_ZE_AA = CalcAreaAverage(Omega_ZE,ZonalAverage=True)
-    
-    # plot_map(Omega,MapsDirectory,"Omega")
-    # plot_map(Omega_ZE,MapsDirectory,"Omega_ZE")
-    
-    # Store area average and the averaged eddy component of the adiabatic
-    # heating
-    Q = FixedObj.AdiabaticHeating
-    Q_ZA = CalcZonalAverage(Q)
-    Q_AA = CalcAreaAverage(Q_ZA)
-    Q_ZE = Q - Q_ZA
-    Q_ZE_AA = CalcAreaAverage(Q_ZE,ZonalAverage=True)
             
     for t in timesteps:
         # Get current time and time strings
         itime = str(t.values)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         print("Storing results for: "+datestr)
-        
-        dfDict['T_AA'][itime] = T_AA.sel({FixedObj.TimeIndexer:t})
-        dfDict['T_ZE_AA'][itime] = T_ZE_AA.sel({FixedObj.TimeIndexer:t})
-        dfDict['Omega_AA'][itime] = Omega_AA.sel({FixedObj.TimeIndexer:t})
-        dfDict['Omega_ZE_AA'][itime] = Omega_ZE_AA.sel({FixedObj.TimeIndexer:t})
-        dfDict['Q_AA'][itime] = Q_AA.sel({FixedObj.TimeIndexer:t})
-        dfDict['Q_ZE_AA'][itime] = Q_ZE_AA.sel({FixedObj.TimeIndexer:t})
-          
-        # Plot maps of adiabatic heating term
-        Q.name = "Q"
-        Q['units'] = "J kg-1 s-1"
-        # plot_map(Q.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"Q")
-        Q_ZE.name = "Q'"
-        Q_ZE['units'] = "J kg-1 s-1"
-        # plot_map(Q_ZE.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"Q_ZE")
-        
-        # Plot temperature x omega (eddies)
-        TO_ZE = T_ZE*Omega_ZE
-        TO_ZE.name = "T'ω'"
-        TO_ZE['units'] = "K Pa-1 s-1"
-        # plot_map(TO_ZE.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"TOmega_ZE")
-        # Plot temperature x Q (eddies)
-        TQ_ZE = T_ZE*Q_ZE
-        TQ_ZE.name = "T'Q'"
-        TQ_ZE['units'] = "J K kg-1 s-1"
-        # plot_map(TQ_ZE.sel({FixedObj.TimeIndexer:t}),MapsDirectory,"TQ_ZE")
-        
+                
         # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(FixedObj.AdvHTemp.sel(
             {FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
         dfDict['SpOmega'][itime] = CalcAreaAverage(FixedObj.sigma.sel(
             {FixedObj.TimeIndexer:t})*
-            Omega.sel({FixedObj.TimeIndexer:t}),
+            FixedObj.Omega.sel({FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
         dfDict['dTdt'][itime] = CalcAreaAverage(FixedObj.dTdt.sel(
             {FixedObj.TimeIndexer:t}),
@@ -461,12 +415,30 @@ def FixedAnalysis(FixedObj):
         dfDict['ResT'][itime] = CalcAreaAverage(FixedObj.ResT.sel(
             {FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
+    
+    
+    term_results = [FixedObj.AdvHTemp, FixedObj.Omega*FixedObj.sigma,
+                    FixedObj.dTdt, FixedObj.ResT]
+    for term,r in zip(stored_terms,term_results):
+        results_nc[term].append(r.metpy.dequantify().rename(term))
+    
+    print('saving results to nc file...')
+    dict_nc = {}
+    for term in stored_terms:
+        dict_nc[term] = xr.concat(
+            results_nc[term],dim=FixedObj.TimeIndexer)
+    out_nc = xr.merge([dict_nc])
+    fname = ResultsSubDirectory+ outfile_name+'.nc'
+    out_nc.to_netcdf(fname)
+    print(fname+' created')
                                                  
     # Save CSV files with all the terms stored above
     for term in stored_terms:
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
-    # Make timeseries
-    os.system("python plot_timeseries.py "+ResultsSubDirectory)                                   
+        
+    min_lon, max_lon = FixedObj.WesternLimit, FixedObj.EasternLimit
+    min_lat, max_lat = FixedObj.SouthernLimit, FixedObj.NorthernLimit
+    plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory)                                
     
 if __name__ == "__main__":
     
@@ -505,7 +477,7 @@ domain by clicking on the screen.")
     start_time = time.time()
     
     # Open namelist
-    varlist = './inputs/fvars'
+    varlist = '../inputs/fvars'
     dfVars = pd.read_csv(varlist,sep= ';',index_col=0,header=0)
     
     # Data indexers
@@ -539,7 +511,7 @@ domain by clicking on the screen.")
     print('Done.')
     
     # Directory where results will be stored
-    ResultsMainDirectory = './Results/'
+    ResultsMainDirectory = '../Results/'
     # Append data method to outfile name
     if args.fixed:
         outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_fixed'
@@ -558,11 +530,16 @@ domain by clicking on the screen.")
     check_create_folder(ResultsSubDirectory)
     check_create_folder(FigsDirectory)
     check_create_folder(MapsDirectory)
+    # backup of ox_limits and track file for reproductability
+    if args.fixed:
+        os.system('cp ../inputs/box_limits '+ResultsSubDirectory)
+    elif args.track:
+        os.system('cp ../inputs/track '+ResultsSubDirectory)
     
     # Run the program
     if args.fixed:
         print('Running Fixed framework.')
-        dfbox = pd.read_csv('./inputs/box_limits',header=None,delimiter=';',index_col=0)
+        dfbox = pd.read_csv('../inputs/box_limits',header=None,delimiter=';',index_col=0)
         FixedObj = DataObject(NetCDF_data,dfVars,dfbox)
         FixedAnalysis(FixedObj)
         print("--- %s seconds running Fixed framework ---" % (time.time() - start_time))
