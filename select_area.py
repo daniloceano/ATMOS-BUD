@@ -37,28 +37,47 @@ def draw_box(ax, limits, crs):
             (max_lon, min_lat),
             (min_lon, min_lat)))
     ax.add_geometries([pgon], crs=crs, 
-                      facecolor='None', edgecolor='#BF3D3B', linewidth = 3,
+                      facecolor='None', edgecolor='#6c757d', linewidth = 3,
                       alpha=1, zorder = 3)
 
 def plot_slp(ax, slp, lat, lon):
-    min_slp = float(slp.min())
-    max_slp = float(slp.max())
-    if min_slp < max_slp:
-             norm = colors.TwoSlopeNorm(vmin=min_slp,
-                               vcenter=0, vmax=max_slp)
-    else:
-        norm = colors.TwoSlopeNorm(vmin=min_slp,
-                          vcenter=0, vmax=200)
+    norm = colors.TwoSlopeNorm(vmin=-300, vcenter=0, vmax=300)
     cmap = cmo.balance
     # plot contours
     cf1 = ax.contourf(lon, lat, slp, cmap=cmap,norm=norm, transform=crs_longlat) 
     plt.colorbar(cf1, pad=0.07, orientation='vertical', shrink=0.5)
     ax.contour(lon, lat, slp, cf1.levels,colors='#383838',
                linewidths=0.25,transform=crs_longlat)
+    
+def plot_min_slp(ax,slp, lat, lon, limits):
+    max_lon, min_lon = limits['max_lon'], limits['min_lon']
+    max_lat, min_lat = limits['max_lat'], limits['min_lat']
+    # Plot mininum SLP point whithin box
+    islp = slp.sel({lon.dims[0]:slice(min_lon,max_lon),
+                    lat.dims[0]:slice(min_lat,max_lat)})
+    slp_min = islp.min()
+    slp_min_loc = islp.where(islp==slp_min, drop=True).squeeze()
+    # sometimes there are multiple minimuns
+    if slp_min_loc.shape:
+        if len(slp_min_loc.shape) >1:
+            for points in slp_min_loc:
+                for point in points:
+                    ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
+                           marker='o', facecolors='none', linewidth=3,
+                           edgecolor='#a5a58d',  s=200)
+        else:
+            for point in slp_min_loc:
+                ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
+                       marker='o', facecolors='none', linewidth=3,
+                       edgecolor='#a5a58d',  s=200)
+    else:
+        ax.scatter(slp_min_loc[lon.dims[0]], slp_min_loc[lat.dims[0]],
+               marker='o', facecolors='none', linewidth=3,
+               edgecolor='#a5a58d',  s=200)
 
 def initial_domain(slp, lat, lon):
     plt.close('all')
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection=crs_longlat)
     fig.add_axes(ax)
     ax.set_global()
@@ -123,12 +142,14 @@ def draw_box_map(u, v, slp, lat, lon, timestr, domain_limits):
         lls = coordXform(crs_longlat, crs_longlat, xs, ys)
         min_lon,min_lat = lls[0,0], lls[0,1]
         max_lon, max_lat = lls[1,0], lls[1,1]
-        
+                
         limits = {'min_lon':min_lon,'max_lon':max_lon,
                 'min_lat':min_lat, 'max_lat':max_lat}
         draw_box(ax, limits, crs_longlat)
+        plot_min_slp(ax, slp, lat, lon, limits)
     
         tellme('Happy? Key press any keyboard key for yes, mouse click for no')
+        
     
         if plt.waitforbuttonpress():
             break
