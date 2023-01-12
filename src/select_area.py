@@ -48,7 +48,7 @@ def draw_box(ax, limits, crs):
                       alpha=1, zorder = 3)
 
 def plot_slp(ax, slp, lat, lon):
-    norm = colors.TwoSlopeNorm(vmin=-300, vcenter=0, vmax=300)
+    norm = colors.TwoSlopeNorm(vmin=-5e-5, vcenter=0, vmax=5e-5)
     cmap = cmo.balance
     # plot contours
     cf1 = ax.contourf(lon, lat, slp, cmap=cmap,norm=norm, transform=crs_longlat) 
