@@ -19,8 +19,7 @@ from metpy.constants import Cp_d
 from metpy.constants import Re
 from metpy.calc import potential_temperature
 from metpy.calc import geopotential_to_height
-from metpy.calc import height_to_pressure_std
-from metpy.calc import altimeter_to_sea_level_pressure
+from metpy.calc import vorticity
 from metpy.calc import wind_speed
 from metpy.constants import g
 
@@ -86,55 +85,40 @@ def choose_domain_analysis(MovingObj, position, t, domain_limits):
     
     itime = str(t.values)
     
-    iu_1000 = MovingObj.u.sel({MovingObj.TimeIndexer:t,
-                                   MovingObj.LevelIndexer:1000})
-    iv_1000 = MovingObj.v.sel({MovingObj.TimeIndexer:t,
-                                   MovingObj.LevelIndexer:1000})
-    # Geopotential from geopotential height
-    igeop_1000 = MovingObj.GeopotHeight.sel(
-        {MovingObj.TimeIndexer:t,
-         MovingObj.LevelIndexer:1000})*g
-    iheight_1000 = geopotential_to_height(igeop_1000)
+    iu_850 = MovingObj.u.sel({MovingObj.TimeIndexer:t,
+                                   MovingObj.LevelIndexer:850})
+    iv_850 = MovingObj.v.sel({MovingObj.TimeIndexer:t,
+                                   MovingObj.LevelIndexer:850})
     
-    lat = iu_1000[MovingObj.LatIndexer]
-    lon = iu_1000[MovingObj.LonIndexer]
+    lat = iu_850[MovingObj.LatIndexer]
+    lon = iu_850[MovingObj.LonIndexer]
     
-    # # Reduce to sea level pressure
-    # it_1000 = MovingObj.Temperature.sel({MovingObj.TimeIndexer:t,
-    #                                MovingObj.LevelIndexer:1000})
-    # ip_1000 = it_1000[MovingObj.LevelIndexer].expand_dims(
-    #     {MovingObj.LatIndexer:it_1000[MovingObj.LatIndexer],
-    #      MovingObj.LonIndexer:it_1000[MovingObj.LonIndexer]}
-    #     )*units(it_1000[MovingObj.LevelIndexer].units)
-    # imslp = altimeter_to_sea_level_pressure(ip_1000, iheight_1000, it_1000)
+    zeta = vorticity(iu_850, iv_850)
     
-    # imslp = height_to_pressure_std(iheight_1000)
-    
-    imslp = iheight_1000.copy()
     
     # Select initial domain so its easier to see the systems on the map
     if not domain_limits:
-        domain_limits = initial_domain(imslp, lat, lon)
+        domain_limits = initial_domain(zeta, lat, lon)
     else:
         domain_limits = domain_limits
         
-    iu_1000 = iu_1000.sel({MovingObj.LatIndexer:slice(
+    iu_850 = iu_850.sel({MovingObj.LatIndexer:slice(
         domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
         MovingObj.LonIndexer:slice(
             domain_limits['min_lon'],domain_limits['max_lon'])})
-    iv_1000 = iv_1000.sel({MovingObj.LatIndexer:slice(
+    iv_850 = iv_850.sel({MovingObj.LatIndexer:slice(
         domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
         MovingObj.LonIndexer:slice(
             domain_limits['min_lon'],domain_limits['max_lon'])})
-    imslp = imslp.sel({MovingObj.LatIndexer:slice(
+    zeta = zeta.sel({MovingObj.LatIndexer:slice(
         domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
         MovingObj.LonIndexer:slice(
             domain_limits['min_lon'],domain_limits['max_lon'])})
-    lat = iu_1000[MovingObj.LatIndexer]
-    lon = iu_1000[MovingObj.LonIndexer]
+    lat = iu_850[MovingObj.LatIndexer]
+    lon = iu_850[MovingObj.LonIndexer]
     
     # Draw maps and ask user to specify corners for specifying the box
-    limits = draw_box_map(iu_1000, iv_1000, imslp, lat, lon,
+    limits = draw_box_map(iu_850, iv_850, zeta, lat, lon,
                           itime, domain_limits)
     
     # Store results
@@ -143,8 +127,8 @@ def choose_domain_analysis(MovingObj, position, t, domain_limits):
     central_lon = (limits['max_lon'] + limits['min_lon'])/2
     dy = (limits['max_lat'] - limits['min_lat'])/2
     dx = (limits['max_lat'] - limits['min_lon'])/2
-    min_slp = float(imslp.min())
-    max_wind = float(wind_speed(iu_1000, iv_1000).max())
+    min_slp = float(zeta.min())
+    max_wind = float(wind_speed(iu_850, iv_850).max())
     
     keys = ['time', 'central_lat', 'central_lon', 'dy', 'dx',
             'min_slp','max_wind']
