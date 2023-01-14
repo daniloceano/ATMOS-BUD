@@ -44,17 +44,22 @@ def draw_box(ax, limits, crs):
             (max_lon, min_lat),
             (min_lon, min_lat)))
     ax.add_geometries([pgon], crs=crs, 
-                      facecolor='None', edgecolor='#6c757d', linewidth = 3,
+                      facecolor='None', edgecolor='k', linewidth = 3,
                       alpha=1, zorder = 3)
 
-def plot_slp(ax, slp, lat, lon):
-    norm = colors.TwoSlopeNorm(vmin=-5e-5, vcenter=0, vmax=5e-5)
+def plot_zeta(ax, zeta, lat, lon):
+    if np.abs(zeta.min()) < np.abs(zeta.max()):
+        norm = colors.TwoSlopeNorm(vmin=-zeta.max(), vcenter=0,vmax=zeta.max())
+    else:
+        norm = colors.TwoSlopeNorm(vmin=zeta.min(), vcenter=0,
+                                   vmax=-zeta.min())
     cmap = cmo.balance
     # plot contours
-    cf1 = ax.contourf(lon, lat, slp, cmap=cmap,norm=norm, transform=crs_longlat) 
+    cf1 = ax.contourf(lon, lat, zeta, cmap=cmap,norm=norm,levels=51,
+                      transform=crs_longlat) 
     plt.colorbar(cf1, pad=0.07, orientation='vertical', shrink=0.5)
-    ax.contour(lon, lat, slp, cf1.levels,colors='#383838',
-               linewidths=0.25,transform=crs_longlat)
+    # ax.contour(lon, lat, zeta, cf1.levels,colors='#383838',
+    #            linewidths=0.25,transform=crs_longlat)
     
 def map_decorators(ax):
     ax.coastlines()
@@ -65,39 +70,39 @@ def map_decorators(ax):
     gl.top_labels = None
     gl.right_labels = None
     
-def plot_min_slp(ax,slp, lat, lon, limits):
+def plot_min_zeta(ax, zeta, lat, lon, limits):
     max_lon, min_lon = limits['max_lon'], limits['min_lon']
     max_lat, min_lat = limits['max_lat'], limits['min_lat']
-    # Plot mininum SLP point whithin box
-    islp = slp.sel({lon.dims[0]:slice(min_lon,max_lon),
+    # Plot mininum zeta point whithin box
+    izeta = zeta.sel({lon.dims[0]:slice(min_lon,max_lon),
                     lat.dims[0]:slice(min_lat,max_lat)})
-    slp_min = islp.min()
-    slp_min_loc = islp.where(islp==slp_min, drop=True).squeeze()
+    zeta_min = izeta.min()
+    zeta_min_loc = izeta.where(izeta==zeta_min, drop=True).squeeze()
     # sometimes there are multiple minimuns
-    if slp_min_loc.shape:
-        if len(slp_min_loc.shape) >1:
-            for points in slp_min_loc:
+    if zeta_min_loc.shape:
+        if len(zeta_min_loc.shape) >1:
+            for points in zeta_min_loc:
                 for point in points:
                     ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
                            marker='o', facecolors='none', linewidth=3,
-                           edgecolor='#a5a58d',  s=200)
+                           edgecolor='k',  s=200)
         else:
-            for point in slp_min_loc:
+            for point in zeta_min_loc:
                 ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
                        marker='o', facecolors='none', linewidth=3,
-                       edgecolor='#a5a58d',  s=200)
+                       edgecolor='k',  s=200)
     else:
-        ax.scatter(slp_min_loc[lon.dims[0]], slp_min_loc[lat.dims[0]],
+        ax.scatter(zeta_min_loc[lon.dims[0]], zeta_min_loc[lat.dims[0]],
                marker='o', facecolors='none', linewidth=3,
-               edgecolor='#a5a58d',  s=200)
+               edgecolor='k',  s=200)
 
-def initial_domain(slp, lat, lon):
+def initial_domain(zeta, lat, lon):
     plt.close('all')
     fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection=crs_longlat)
     fig.add_axes(ax)
     ax.set_global()
-    plot_slp(ax, slp, lat, lon)
+    plot_zeta(ax, zeta, lat, lon)
     map_decorators(ax)
     plt.subplots_adjust(bottom=0, top=1.2)
     
@@ -129,16 +134,16 @@ def initial_domain(slp, lat, lon):
     return limits
     
 
-def draw_box_map(u, v, slp, lat, lon, timestr, domain_limits):
+def draw_box_map(u, v, zeta, lat, lon, timestr):
     plt.close('all')
     fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection=crs_longlat)
     fig.add_axes(ax)
-    ax.set_extent([domain_limits['min_lon'], domain_limits['max_lon'],
-                  domain_limits['min_lat'],domain_limits['max_lat']]) 
+    # ax.set_extent([domain_limits['min_lon'], domain_limits['max_lon'],
+    #               domain_limits['min_lat'],domain_limits['max_lat']]) 
     
-    plot_slp(ax, slp, lat, lon)
-    ax.quiver(lon.values, lat.values, u.values, v.values,
+    plot_zeta(ax, zeta, lat, lon)
+    ax.streamplot(lon.values, lat.values, u.values, v.values, color='#4a4e69',
               transform=crs_longlat)
     map_decorators(ax)
     
@@ -162,7 +167,7 @@ def draw_box_map(u, v, slp, lat, lon, timestr, domain_limits):
         limits = {'min_lon':min_lon,'max_lon':max_lon,
                 'min_lat':min_lat, 'max_lat':max_lat}
         draw_box(ax, limits, crs_longlat)
-        plot_min_slp(ax, slp, lat, lon, limits)
+        plot_min_zeta(ax, zeta, lat, lon, limits)
     
         tellme('Happy? Key press any keyboard key for yes, mouse click for no')
         
