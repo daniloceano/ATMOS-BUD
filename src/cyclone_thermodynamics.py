@@ -18,10 +18,11 @@ from metpy.units import units
 from metpy.constants import Cp_d
 from metpy.constants import Re
 from metpy.calc import potential_temperature
-from metpy.calc import geopotential_to_height
 from metpy.calc import vorticity
 from metpy.calc import wind_speed
 from metpy.constants import g
+
+from scipy.signal import savgol_filter    
 
 import pandas as pd
 import xarray as xr
@@ -81,45 +82,82 @@ def convert_lon(xr,LonIndexer):
     xr = xr.sortby(xr[LonIndexer])
     return xr
 
-def choose_domain_analysis(MovingObj, position, t, domain_limits):
+def slice_domain(NetCDF_data, args, dfVars):
+    
+    # Data indexers
+    LonIndexer = dfVars.loc['Longitude']['Variable']
+    LatIndexer = dfVars.loc['Latitude']['Variable']
+    TimeIndexer = dfVars.loc['Time']['Variable']
+    LevelIndexer = dfVars.loc['Vertical Level']['Variable']
+    
+    if args.fixed:
+        method = 'fixed'
+        dfbox = pd.read_csv('../inputs/box_limits',header=None,
+                            delimiter=';',index_col=0)
+        WesternLimit = float(NetCDF_data[LonIndexer].sel(
+            {LonIndexer:float(dfbox.loc['min_lon'].values)},
+            method='nearest'))
+        EasternLimit =float(NetCDF_data[LonIndexer].sel(
+            {LonIndexer:float(dfbox.loc['max_lon'].values)},
+            method='nearest'))
+        SouthernLimit =float(NetCDF_data[LatIndexer].sel(
+            {LatIndexer:float(dfbox.loc['min_lat'].values)},
+            method='nearest'))
+        NorthernLimit =float(NetCDF_data[LatIndexer].sel(
+            {LatIndexer:float(dfbox.loc['max_lat'].values)},
+            method='nearest'))
+        
+    elif args.track:
+        method = 'track'
+        trackfile = '../inputs/track'
+        track = pd.read_csv(trackfile,parse_dates=[0],
+                            delimiter=';',index_col='time')
+        if 'dx' and 'dy' in track.columns:
+            min_dx, max_dx = track['dx'].min(), track['dx'].max()
+            min_dy, max_dy = track['dy'].min(), track['dy'].max()
+        WesternLimit = track['Lon'].min()-min_dx
+        EasternLimit = track['Lon'].max()+max_dx
+        SouthernLimit = track['Lat'].min()-min_dy
+        NorthernLimit = track['Lat'].max()+max_dy
+        
+    elif args.choose:
+        method = 'choose'
+        iu_850 = NetCDF_data.isel({TimeIndexer:0}).sel({LevelIndexer:850}
+                        )[dfVars.loc['Eastward Wind Component']['Variable']]
+        iv_850 = NetCDF_data.isel({TimeIndexer:0}).sel({LevelIndexer:850}
+                        )[dfVars.loc['Northward Wind Component']['Variable']]
+        zeta = vorticity(iu_850, iv_850)
+        zeta_filtered = zeta.to_dataset(name='vorticity'
+                    ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
+        lat, lon = iu_850[LatIndexer], iu_850[LonIndexer]
+        domain_limits = initial_domain(zeta_filtered, lat, lon)
+        WesternLimit = domain_limits['min_lon']
+        EasternLimit = domain_limits['max_lon']
+        SouthernLimit = domain_limits['min_lat']
+        NorthernLimit = domain_limits['max_lat']
+        
+    NetCDF_data = NetCDF_data.sel(
+        **{LatIndexer:slice(SouthernLimit,NorthernLimit),
+           LonIndexer: slice(WesternLimit,EasternLimit)})
+    
+    return NetCDF_data, method
+
+def choose_domain_analysis(MovingObj, position, t):
     
     itime = str(t.values)
+    TimeIndexer = MovingObj.TimeIndexer
+    LevelIndexer = MovingObj.LevelIndexer
     
-    iu_850 = MovingObj.u.sel({MovingObj.TimeIndexer:t,
-                                   MovingObj.LevelIndexer:850})
-    iv_850 = MovingObj.v.sel({MovingObj.TimeIndexer:t,
-                                   MovingObj.LevelIndexer:850})
-    
-    lat = iu_850[MovingObj.LatIndexer]
-    lon = iu_850[MovingObj.LonIndexer]
-    
+    iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
+    iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
     zeta = vorticity(iu_850, iv_850)
-    
-    
-    # Select initial domain so its easier to see the systems on the map
-    if not domain_limits:
-        domain_limits = initial_domain(zeta, lat, lon)
-    else:
-        domain_limits = domain_limits
-        
-    iu_850 = iu_850.sel({MovingObj.LatIndexer:slice(
-        domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
-        MovingObj.LonIndexer:slice(
-            domain_limits['min_lon'],domain_limits['max_lon'])})
-    iv_850 = iv_850.sel({MovingObj.LatIndexer:slice(
-        domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
-        MovingObj.LonIndexer:slice(
-            domain_limits['min_lon'],domain_limits['max_lon'])})
-    zeta = zeta.sel({MovingObj.LatIndexer:slice(
-        domain_limits['min_lat'],domain_limits['max_lat'])}).sel({
-        MovingObj.LonIndexer:slice(
-            domain_limits['min_lon'],domain_limits['max_lon'])})
+    zeta_filtered = zeta.to_dataset(name='vorticity'
+                ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
     lat = iu_850[MovingObj.LatIndexer]
     lon = iu_850[MovingObj.LonIndexer]
     
     # Draw maps and ask user to specify corners for specifying the box
-    limits = draw_box_map(iu_850, iv_850, zeta, lat, lon,
-                          itime, domain_limits)
+    limits = draw_box_map(iu_850, iv_850, zeta_filtered, lat, lon, itime)
     
     # Store results
     time = pd.to_datetime(itime).strftime('%Y-%m-%d %H%M')
@@ -127,13 +165,13 @@ def choose_domain_analysis(MovingObj, position, t, domain_limits):
     central_lon = (limits['max_lon'] + limits['min_lon'])/2
     dy = (limits['max_lat'] - limits['min_lat'])/2
     dx = (limits['max_lat'] - limits['min_lon'])/2
-    min_slp = float(zeta.min())
+    min_zeta = float(zeta_filtered.min())
     max_wind = float(wind_speed(iu_850, iv_850).max())
     
     keys = ['time', 'central_lat', 'central_lon', 'dy', 'dx',
-            'min_slp','max_wind']
+            'min_zeta','max_wind']
     values = [time, central_lat, central_lon, dy, dx,
-              min_slp, max_wind]
+              min_zeta, max_wind]
 
     if len(position) == 0:
         for key,val in zip(keys,values):
@@ -142,7 +180,7 @@ def choose_domain_analysis(MovingObj, position, t, domain_limits):
         for key,val in zip(keys,values):
             position[key].append(val)
     
-    return position, limits, domain_limits
+    return position, limits
 
 class DataObject:
     """
@@ -158,28 +196,7 @@ class DataObject:
         self.LatIndexer = dfVars.loc['Latitude']['Variable']
         self.TimeIndexer = dfVars.loc['Time']['Variable']
         self.LevelIndexer = dfVars.loc['Vertical Level']['Variable']
-        # When constructing object for Fixed analysis, the data can
-        # be sliced beforehand using the dfBox limits, but for the Moving
-        # analysis (dfBox not specified), we need full data and then it is
-        # sliced for each timestep.
-        if dfbox is None:
-            self.NetCDF_data = NetCDF_data
-        else:
-            self.WesternLimit = float(NetCDF_data[self.LonIndexer].sel(
-                {self.LonIndexer:float(dfbox.loc['min_lon'].values)},
-                method='nearest'))
-            self.EasternLimit =float(NetCDF_data[self.LonIndexer].sel(
-                {self.LonIndexer:float(dfbox.loc['max_lon'].values)},
-                method='nearest'))
-            self.SouthernLimit =float(NetCDF_data[self.LatIndexer].sel(
-                {self.LatIndexer:float(dfbox.loc['min_lat'].values)},
-                method='nearest'))
-            self.NorthernLimit =float(NetCDF_data[self.LatIndexer].sel(
-                {self.LatIndexer:float(dfbox.loc['max_lat'].values)},
-                method='nearest'))
-            self.NetCDF_data = NetCDF_data.sel(
-                **{self.LatIndexer:slice(self.SouthernLimit,self.NorthernLimit),
-                   self.LonIndexer: slice(self.WesternLimit,self.EasternLimit)})
+        self.NetCDF_data = NetCDF_data
         self.Temperature = self.NetCDF_data[dfVars.loc['Air Temperature']['Variable']] \
             * units(dfVars.loc['Air Temperature']['Units']).to('K')
         self.u = self.NetCDF_data[dfVars.loc['Eastward Wind Component']['Variable']] \
@@ -275,12 +292,8 @@ def MovingAnalysis(MovingObj,args):
             max_lat = track.loc[itime]['Lat']+dy
             
         elif args.choose:
-            if t == timesteps[0]:
-                position, limits, domain_limits = choose_domain_analysis(
-                MovingObj, position, t, None)
-            else:
-                position, limits, domain_limits = choose_domain_analysis(
-                MovingObj, position, t, domain_limits)
+            position, limits = choose_domain_analysis(
+            MovingObj, position, t)
             dx, dy = position['dx'][-1],position['dy'][-1]
             min_lon, max_lon = limits['min_lon'],  limits['max_lon']
             min_lat, max_lat = limits['min_lat'],  limits['max_lat']
@@ -420,8 +433,10 @@ def FixedAnalysis(FixedObj):
     for term in stored_terms:
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
         
-    min_lon, max_lon = FixedObj.WesternLimit, FixedObj.EasternLimit
-    min_lat, max_lat = FixedObj.SouthernLimit, FixedObj.NorthernLimit
+    min_lon = FixedObj.NetCDF_data[FixedObj.LonIndexer].min()
+    max_lon = FixedObj.NetCDF_data[FixedObj.LonIndexer].max()
+    min_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].min()
+    max_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].max()
     plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory)                                
     
 if __name__ == "__main__":
@@ -479,9 +494,15 @@ domain by clicking on the screen.")
     else:
         NetCDF_data = convert_lon(xr.open_dataset(infile),
                               dfVars.loc['Longitude']['Variable'])
+        
     print('Done.\nNow, running pre-processing stages...')
-    # load data into memory (code optmization)
-    NetCDF_data = NetCDF_data.load()
+    # Sort data coordinates as data from distinc sources might have different
+    # arrangements and this might affect the results from the integrations
+    NetCDF_data = NetCDF_data.sortby(LonIndexer).sortby(LevelIndexer
+                                                        ).sortby(LatIndexer)
+    # Slice data so the code runs faster
+    NetCDF_data, method = slice_domain(NetCDF_data, args, dfVars)
+    
     # Assign lat and lon as radians, for calculations
     NetCDF_data = NetCDF_data.assign_coords(
         {"rlats": np.deg2rad(NetCDF_data[LatIndexer])})
@@ -489,20 +510,12 @@ domain by clicking on the screen.")
         {"coslats": np.cos(np.deg2rad(NetCDF_data[LatIndexer]))})
     NetCDF_data = NetCDF_data.assign_coords(
         {"rlons": np.deg2rad(NetCDF_data[LonIndexer])})
-    # Sort data coordinates as data from distinc sources might have different
-    # arrangements and this might affect the results from the integrations
-    NetCDF_data = NetCDF_data.sortby(LonIndexer).sortby(LevelIndexer).sortby(LatIndexer)
     print('Done.')
     
     # Directory where results will be stored
     ResultsMainDirectory = '../Results/'
     # Append data method to outfile name
-    if args.fixed:
-        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_fixed'
-    elif args.track:
-        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_track'
-    elif args.choose:
-        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_choose'
+    outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_'+method
     # Each dataset of results have its own directory, allowing to store results
     # from more than one experiment at each time
     ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
@@ -523,12 +536,13 @@ domain by clicking on the screen.")
     # Run the program
     if args.fixed:
         print('Running Fixed framework.')
-        dfbox = pd.read_csv('../inputs/box_limits',header=None,delimiter=';',index_col=0)
-        FixedObj = DataObject(NetCDF_data,dfVars,dfbox)
+        FixedObj = DataObject(NetCDF_data,dfVars)
         FixedAnalysis(FixedObj)
-        print("--- %s seconds running Fixed framework ---" % (time.time() - start_time))
+        print("--- %s seconds running Fixed framework ---" % (
+            time.time() - start_time))
     if args.track or args.choose:
         print('Running Moving framework.')
         MovingObj = DataObject(NetCDF_data,dfVars)
         MovingAnalysis(MovingObj,args)
-        print("--- %s seconds for running Moving framework ---" % (time.time() - start_time))            
+        print("--- %s seconds for running Moving framework ---" % (
+            time.time() - start_time))            
