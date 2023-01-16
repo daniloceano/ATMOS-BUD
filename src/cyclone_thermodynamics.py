@@ -36,6 +36,8 @@ from select_area import initial_domain
 
 from plot_domains import plot_fixed_domain
 from plot_domains import plot_track
+from plot_domains import plot_min_zeta_hgt
+
 
 import time
 
@@ -108,17 +110,22 @@ def slice_domain(NetCDF_data, args, dfVars):
             method='nearest'))
         
     elif args.track:
-        method = 'track'
         trackfile = '../inputs/track'
         track = pd.read_csv(trackfile,parse_dates=[0],
                             delimiter=';',index_col='time')
-        if 'dx' and 'dy' in track.columns:
-            min_dx, max_dx = track['dx'].min(), track['dx'].max()
-            min_dy, max_dy = track['dy'].min(), track['dy'].max()
-        WesternLimit = track['Lon'].min()-min_dx
-        EasternLimit = track['Lon'].max()+max_dx
-        SouthernLimit = track['Lat'].min()-min_dy
-        NorthernLimit = track['Lat'].max()+max_dy
+        if 'width' in track.columns:
+            method = 'track'
+            min_width, max_width = track['width'].min(), track['width'].max()
+            min_length, max_length = track['length'].min(), track['length'].max()
+        else:
+            method = 'track-15x15'
+            min_width, max_width = 15, 15
+            min_length, max_length = 15, 15
+            
+        WesternLimit = track['Lon'].min()-(min_width/2)
+        EasternLimit = track['Lon'].max()+(max_width/2)
+        SouthernLimit = track['Lat'].min()-(min_length/2)
+        NorthernLimit = track['Lat'].max()+(max_length/2)
         
     elif args.choose:
         method = 'choose'
@@ -141,46 +148,6 @@ def slice_domain(NetCDF_data, args, dfVars):
            LonIndexer: slice(WesternLimit,EasternLimit)})
     
     return NetCDF_data, method
-
-def choose_domain_analysis(MovingObj, position, t):
-    
-    itime = str(t.values)
-    TimeIndexer = MovingObj.TimeIndexer
-    LevelIndexer = MovingObj.LevelIndexer
-    
-    iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
-    iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
-    zeta = vorticity(iu_850, iv_850)
-    zeta_filtered = zeta.to_dataset(name='vorticity'
-                ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
-    lat = iu_850[MovingObj.LatIndexer]
-    lon = iu_850[MovingObj.LonIndexer]
-    
-    # Draw maps and ask user to specify corners for specifying the box
-    limits = draw_box_map(iu_850, iv_850, zeta_filtered, lat, lon, itime)
-    
-    # Store results
-    time = pd.to_datetime(itime).strftime('%Y-%m-%d %H%M')
-    central_lat = (limits['max_lat'] + limits['min_lat'])/2
-    central_lon = (limits['max_lon'] + limits['min_lon'])/2
-    dy = (limits['max_lat'] - limits['min_lat'])/2
-    dx = (limits['max_lat'] - limits['min_lon'])/2
-    min_zeta = float(zeta_filtered.min())
-    max_wind = float(wind_speed(iu_850, iv_850).max())
-    
-    keys = ['time', 'central_lat', 'central_lon', 'dy', 'dx',
-            'min_zeta','max_wind']
-    values = [time, central_lat, central_lon, dy, dx,
-              min_zeta, max_wind]
-
-    if len(position) == 0:
-        for key,val in zip(keys,values):
-            position[key] = [val]
-    else:
-        for key,val in zip(keys,values):
-            position[key].append(val)
-    
-    return position, limits
 
 class DataObject:
     """
@@ -231,7 +198,7 @@ class DataObject:
         # Differentiate temperature in respect to longitude and latitude
         dTdlambda = self.Temperature.differentiate(self.LonIndexer)
         dTdphi = self.Temperature.differentiate(self.LatIndexer)
-        # Get the values for dx and dy in meters
+        # Get the values for width and length in meters
         dx = np.deg2rad(lons.differentiate(self.LonIndexer))*cos_lats*Re
         dy = np.deg2rad(lats.differentiate(self.LatIndexer))*Re
         AdvHT = -1* ((self.u*dTdlambda/dx)+(self.v*dTdphi/dy)) 
@@ -257,8 +224,13 @@ def MovingAnalysis(MovingObj,args):
     if args.track:
         trackfile = '../inputs/track'
         track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
-    else:
-        position = {}
+
+    # Dictionary for saving system position and attributes
+    position = {}
+    results_keys = ['time', 'central_lat', 'central_lon', 'length', 'width',
+            'min_zeta_850','min_hgt_850','max_wind_850']
+    for key in results_keys:
+        position[key] =  []
         
     # Dictionary to save DataArray results and transform into nc later
     results_nc = {}
@@ -276,33 +248,65 @@ def MovingAnalysis(MovingObj,args):
         results_nc[term] = []
     
     for t in timesteps:
-        # Get current time and time strings
+        
         itime = str(t.values)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         
+        iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
+        iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
+        ight_850 = MovingObj.GeopotHeight.sel({TimeIndexer:t}
+                                               ).sel({LevelIndexer:850})
+        zeta = vorticity(iu_850, iv_850).metpy.dequantify()
+        # Apply filter when using high resolution gridded data
+        dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
+        if dx < 1:
+            zeta = zeta.to_dataset(name='vorticity'
+                ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
+            
+        lat, lon = iu_850[MovingObj.LatIndexer], iu_850[MovingObj.LonIndexer]
+        
         if args.track:
             # Get current time and box limits
-            if 'dx'in track.columns:
-                dx, dy = track.loc[itime]['dx'],track.loc[itime]['dy']
+            if 'width'in track.columns:
+                width, length = track.loc[itime]['width'],track.loc[itime]['length']
             else:
-                dx, dy = 7.5, 7.5
-            min_lon = track.loc[itime]['Lon']-dx
-            max_lon = track.loc[itime]['Lon']+dx
-            min_lat = track.loc[itime]['Lat']-dy
-            max_lat = track.loc[itime]['Lat']+dy
-            
+                width, length = 15, 15
+            min_lon = track.loc[itime]['Lon']-(width/2)
+            max_lon = track.loc[itime]['Lon']+(width/2)
+            min_lat = track.loc[itime]['Lat']-(length/2)
+            max_lat = track.loc[itime]['Lat']+(length/2)
+            limits = {'min_lon':min_lon,'max_lon':max_lon,
+                      'min_lat':min_lat,'max_lat':max_lat}
+        
         elif args.choose:
-            position, limits = choose_domain_analysis(
-            MovingObj, position, t)
-            dx, dy = position['dx'][-1],position['dy'][-1]
+            # Draw maps and ask user to specify corners for specifying the box
+            limits = draw_box_map(iu_850, iv_850, zeta, ight_850,
+                                  lat, lon, itime)
             min_lon, max_lon = limits['min_lon'],  limits['max_lon']
             min_lat, max_lat = limits['min_lat'],  limits['max_lat']
+        
+        # Store system position and attributes
+        central_lat = (limits['max_lat'] + limits['min_lat'])/2
+        central_lon = (limits['max_lon'] + limits['min_lon'])/2
+        length = limits['max_lat'] - limits['min_lat']
+        width = limits['max_lon'] - limits['min_lon']
+        min_zeta = float(zeta.min())
+        min_hgt = float(ight_850.min())
+        max_wind = float(wind_speed(iu_850, iv_850).max())
+        
+        values = [datestr, central_lat, central_lon, length, width,
+                  min_zeta, min_hgt, max_wind]
+        for key,val in zip(results_keys,values):
+            position[key].append(val)
             
-        print('\nComputing terms for '+datestr+'...')
+        print('\nTime: ',datestr)
         print('Box min_lon, max_lon: '+str(min_lon)+'/'+str(max_lon))
         print('Box min_lat, max_lat: '+str(min_lat)+'/'+str(max_lat))
-        print('Box size (longitude): '+str(dx*2))
-        print('Box size (latitude): '+str(dy*2))
+        print('Box size (longitude): '+str(width))
+        print('Box size (latitude): '+str(length))
+        print('Minimum vorticity at 850 hPa:',min_zeta)
+        print('Minimum geopotential height at 850 hPa:',min_hgt)
+        print('Maximum wind speed at 850 hPa:',max_wind)
         
         NetCDF_data = MovingObj.NetCDF_data
         # Get closest grid point to actual track
@@ -333,11 +337,7 @@ def MovingAnalysis(MovingObj,args):
             **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
                MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         SpOmega = omega * sigma
-        
-        term_results = [AdvHTemp,SpOmega,dTdt,ResT]
-        for term,r in zip(stored_terms,term_results):
-            results_nc[term].append(r.metpy.dequantify().rename(term))
-        
+                
         # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
                             ZonalAverage=True).metpy.convert_units('K/ day')
@@ -347,13 +347,17 @@ def MovingAnalysis(MovingObj,args):
                             ZonalAverage=True).metpy.convert_units('K/ day')
         dfDict['ResT'][itime] = CalcAreaAverage(ResT,
                             ZonalAverage=True).metpy.convert_units('K/ day')
-      
+        
+    
     print('saving results to nc file...')
-    dict_nc = {}
-    for term in stored_terms:
-        dict_nc[term] = xr.concat(
-            results_nc[term],dim=MovingObj.TimeIndexer)
-    out_nc = xr.merge([dict_nc])
+    term_results = [MovingObj.AdvHTemp, MovingObj.sigma*MovingObj.Omega,
+                    MovingObj.dTdt,MovingObj.ResT]
+    results_nc = []
+    for term, da in zip(stored_terms,term_results):
+        da =  da.metpy.dequantify()
+        da.name = term
+        results_nc.append(da)
+    out_nc = xr.merge(results_nc)
     fname = ResultsSubDirectory+ outfile_name+'.nc'
     out_nc.to_netcdf(fname)
     print(fname+' created')
@@ -362,14 +366,14 @@ def MovingAnalysis(MovingObj,args):
     for term in stored_terms:
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
         
-    if args.choose:
-        # Save system position as a csv file for replicability
-        track = pd.DataFrame.from_dict(position)
-        track = track.rename(columns={'central_lat':'Lat','central_lon':'Lon'})
-        track.to_csv(ResultsSubDirectory+outfile_name+'_track',
-                     index=False, sep=";")
+    # Save system position as a csv file for replicability
+    track = pd.DataFrame.from_dict(position)
+    track = track.rename(columns={'central_lat':'Lat','central_lon':'Lon'})
+    track.to_csv(ResultsSubDirectory+outfile_name+'_track',
+                 index=False, sep=";")
 
     plot_track(track, FigsDirectory)
+    plot_min_zeta_hgt(track, FigsDirectory)
     # Make timeseries
     #os.system("python plot_timeseries.py "+ResultsSubDirectory)
     
@@ -391,7 +395,6 @@ def FixedAnalysis(FixedObj):
         index=[float(i) for i in pres_levels])
         results_nc[term] = []
         
-            
     for t in timesteps:
         # Get current time and time strings
         itime = str(t.values)
@@ -412,7 +415,6 @@ def FixedAnalysis(FixedObj):
         dfDict['ResT'][itime] = CalcAreaAverage(FixedObj.ResT.sel(
             {FixedObj.TimeIndexer:t}),
             ZonalAverage=True).metpy.convert_units('K/ day')
-    
     
     term_results = [FixedObj.AdvHTemp, FixedObj.Omega*FixedObj.sigma,
                     FixedObj.dTdt, FixedObj.ResT]

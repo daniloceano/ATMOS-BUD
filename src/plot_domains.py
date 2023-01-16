@@ -16,10 +16,13 @@ Contact:
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 from shapely.geometry.polygon import Polygon
+from sklearn import preprocessing
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature, COASTLINE
 from cartopy.feature import BORDERS
 import cartopy
+import cmocean.cm as cmo
+import matplotlib.dates as mdates
 
 def map_features(ax):
     ax.add_feature(COASTLINE,edgecolor='#283618',linewidth=1)
@@ -40,6 +43,7 @@ def Brazil_states(ax):
                                  facecolor='none',
                                   name='populated_places')
     _ = ax.add_feature(cities, edgecolor='#283618',linewidth=1)
+
     
 def plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, outdir):
 
@@ -112,10 +116,26 @@ def plot_track(track, FigsDir):
             
     plt.plot(track['Lon'], track['Lat'],c='#383838')
     
-    
-    plt.scatter(track['Lon'].loc[track.index],
-                       track['Lat'].loc[track.index],
-                       zorder=100,edgecolors='grey')
+    if 'min_zeta_850' and 'max_wind_850' in track.columns:
+        normalized = preprocessing.normalize(
+            track['max_wind_850'].values.reshape(1, -1))
+        normalized = normalized**4 * 100000
+        scatter = ax.scatter(track['Lon'].loc[track.index],
+                           track['Lat'].loc[track.index],
+                           zorder=100,c=track['min_zeta_850'],
+                           cmap=cmo.deep_r, edgecolor='gray',
+                           s=normalized, label=normalized)
+        # produce a legend with a cross section of sizes from the scatter
+        handles, labels = scatter.legend_elements(prop="sizes", alpha=0.6)
+        ax.legend(handles, labels, loc="upper right",
+                            title="Max wind speed at 850 hPa")
+        plt.colorbar(scatter, pad=0.07, orientation='vertical', shrink=0.5,
+                     label= 'Minimum vorticity')
+        
+    else:
+        plt.scatter(track['Lon'].loc[track.index],
+                           track['Lat'].loc[track.index],
+                           zorder=100,edgecolors='grey')
     
     # mark beginning and end of system
     start = [track.loc[track.index[0]]['Lon'],
@@ -132,3 +152,25 @@ def plot_track(track, FigsDir):
     print('\nCreated figure with track and boxes defined for computations: '
           +FigsDir+'track_boxes.png')
     
+def plot_min_zeta_hgt(track, FigsDir):
+    plt.close('all')
+    fig, ax1 = plt.subplots(figsize=(15,10))
+    lns1 = ax1.plot(track.index, track['min_zeta_850'],c='#554348', marker='o',
+             label= '850 hPa minimum vorticity')
+    ax2 = ax1.twinx()
+    lns2 = ax2.plot(track.index, track['min_hgt_850'],c='#6610F2', marker='s',
+             label= '850 hPa minimum geopotential height')
+    # added these three lines
+    lns = lns1+lns2
+    labs = [l.get_label() for l in lns]
+    ax2.legend(lns, labs, loc='best',prop={'size': 18})
+    ax1.grid(c='gray',linewidth=0.25,linestyle='dashdot', axis='x')
+    ax1.tick_params(axis='x', labelrotation=20)
+    ax1.xaxis.set_tick_params(labelsize=16)
+    ax1.yaxis.set_tick_params(labelsize=16)
+    ax2.yaxis.set_tick_params(labelsize=16)
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HZ'))
+    
+    # plt.title('System track and boxes defined for compuations \n', fontsize = 22)
+    plt.savefig(FigsDir+'timeseries-min_zeta_hgt.png',bbox_inches='tight')
+    print('\nCreated:',FigsDir+'track_boxes.png')
