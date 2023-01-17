@@ -422,11 +422,14 @@ def FixedAnalysis(FixedObj):
         results_nc[term].append(r.metpy.dequantify().rename(term))
     
     print('saving results to nc file...')
-    dict_nc = {}
-    for term in stored_terms:
-        dict_nc[term] = xr.concat(
-            results_nc[term],dim=FixedObj.TimeIndexer)
-    out_nc = xr.merge([dict_nc])
+    term_results = [FixedObj.AdvHTemp, FixedObj.sigma*FixedObj.Omega,
+                    FixedObj.dTdt,FixedObj.ResT]
+    results_nc = []
+    for term, da in zip(stored_terms,term_results):
+        da =  da.metpy.dequantify()
+        da.name = term
+        results_nc.append(da)
+    out_nc = xr.merge(results_nc)
     fname = ResultsSubDirectory+ outfile_name+'.nc'
     out_nc.to_netcdf(fname)
     print(fname+' created')
@@ -529,7 +532,7 @@ domain by clicking on the screen.")
     check_create_folder(ResultsSubDirectory)
     check_create_folder(FigsDirectory)
     check_create_folder(MapsDirectory)
-    # backup of ox_limits and track file for reproductability
+    # backup of box_limits and track file for reproductability
     if args.fixed:
         os.system('cp ../inputs/box_limits '+ResultsSubDirectory)
     elif args.track:
