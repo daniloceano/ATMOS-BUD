@@ -133,11 +133,16 @@ def slice_domain(NetCDF_data, args, dfVars):
                         )[dfVars.loc['Eastward Wind Component']['Variable']]
         iv_850 = NetCDF_data.isel({TimeIndexer:0}).sel({LevelIndexer:850}
                         )[dfVars.loc['Northward Wind Component']['Variable']]
-        zeta = vorticity(iu_850, iv_850)
-        zeta_filtered = zeta.to_dataset(name='vorticity'
-                    ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
+        zeta = vorticity(iu_850, iv_850).metpy.dequantify()
+        
+        # Apply filter when using high resolution gridded data
+        dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
+        if dx < 1:
+            zeta = zeta.to_dataset(name='vorticity'
+                ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
+        
         lat, lon = iu_850[LatIndexer], iu_850[LonIndexer]
-        domain_limits = initial_domain(zeta_filtered, lat, lon)
+        domain_limits = initial_domain(zeta, lat, lon)
         WesternLimit = domain_limits['min_lon']
         EasternLimit = domain_limits['max_lon']
         SouthernLimit = domain_limits['min_lat']
