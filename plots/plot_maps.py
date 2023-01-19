@@ -17,7 +17,9 @@ from cartopy.feature import BORDERS
 import pandas as pd
 from matplotlib import cm
 import matplotlib.colors as colors
-
+import sys
+import glob
+import xarray as xr
 
 def map_features(ax):
     ax.add_feature(COASTLINE)
@@ -143,3 +145,9 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
     outfile = FigsDirectory+'/map_'+fname+'_'+str(date)
     plt.savefig(outfile, bbox_inches='tight')
     print(outfile+' created!')
+    
+if __name__ == "__main__":
+
+    ResultsSubDirectory = sys.argv[1]
+    results_data = glob.glob(ResultsSubDirectory+'/*.nc')[0]
+    ds = xr.open_dataset(results_data, engine='netcdf4')

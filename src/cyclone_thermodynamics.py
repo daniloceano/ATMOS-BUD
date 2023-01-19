@@ -380,7 +380,7 @@ def MovingAnalysis(MovingObj,args):
     plot_track(track, FigsDirectory)
     plot_min_zeta_hgt(track, FigsDirectory)
     # Make timeseries
-    #os.system("python plot_timeseries.py "+ResultsSubDirectory)
+    os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory)
     
 def FixedAnalysis(FixedObj):
     
@@ -447,7 +447,9 @@ def FixedAnalysis(FixedObj):
     max_lon = FixedObj.NetCDF_data[FixedObj.LonIndexer].max()
     min_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].min()
     max_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].max()
-    plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory)                                
+    plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory) 
+
+    os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory)                               
     
 if __name__ == "__main__":
     

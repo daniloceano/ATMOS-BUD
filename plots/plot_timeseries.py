@@ -8,7 +8,6 @@ Created on Tue Jul 19 09:43:42 2022
 
 import matplotlib.pyplot as plt
 import numpy as np
-from cyclone_thermodynamics import check_create_folder
 import pandas as pd
 import matplotlib.dates as mdates
 import cmocean
@@ -17,6 +16,27 @@ from matplotlib import cm
 import sys
 import os
 import matplotlib.colors
+
+def check_create_folder(DirName):
+    """
+
+    Check if directory exists and if not, creates it.
+    
+    Parameters
+    ----------
+    DirName : str
+        directory name.
+
+    Returns
+    -------
+    None. 
+
+    """
+    if not os.path.exists(DirName):
+                os.makedirs(DirName)
+                print(DirName+' created')
+    else:
+        print(DirName+' directory exists')
 
 def white_cmap(cmap):
     n=35
@@ -254,7 +274,7 @@ def plot_periods_vertical(ThermDict):
     markercolor =  ['#59c0f0','#b0fa61','#f0d643','#f75452','#f07243','#bc6ff7']   
     
     terms = ThermDict.keys()
-    periods = pd.read_csv('./inputs/periods',sep= ';',header=0)
+    periods = pd.read_csv('../inputs/periods',sep= ';',header=0)
     
     for i in range(len(periods)):
         fig = plt.figure(figsize=(10, 12))
@@ -295,42 +315,9 @@ if __name__ == "__main__":
     
     ResultsSubDirectory = sys.argv[1]
     # Directory for saving Figures
-    FigsSubDirectory = ResultsSubDirectory+'/Figures/'
-    # Check if the LEC_Figures directory exists. If not, creates it
-    check_create_folder(FigsSubDirectory)
-    # Check if a directory for current data exists. If not, creates it
-    check_create_folder(FigsSubDirectory)
-    
-    # Plot averaged terms
-    terms = ['T_AA','Omega_AA','Q_AA',
-                    'T_ZE_AA','Omega_ZE_AA','Q_ZE_AA']
-    labels = ["T (K)","ω (Pa s-1)","Q (J Kg-1 s-1)",
-              "[T'] (K)","[ω'] (Pa s-1)","[Q'] (J Kg-1 s-1)"]
-    for term,label in zip(terms,labels):
-        df = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
-        # time_series(term,df,label,df2=None,label2=None)
-        plot_Hovmoller(df,label,term)
-    # compare eddy area averages 
-    for term1,label1 in zip(terms[:3],labels[:3]):
-        for term2,label2 in zip(terms[:3],labels[:3]):
-            if term1 == term2:
-                # do not plot if the same term appears in both axes
-                pass
-            else:
-                df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
-                df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
-                time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
-    # compare area averages       
-    for term1,label1 in zip(terms[3:],labels[3:]):
-        for term2,label2 in zip(terms[3:],labels[3:]):
-            if term1 == term2:
-                # do not plot if the same term appears in both axes
-                pass
-            else:
-                df1 = pd.read_csv(ResultsSubDirectory+term1+'.csv',index_col=0)
-                df2 = pd.read_csv(ResultsSubDirectory+term2+'.csv',index_col=0)
-                # time_series(term1[0]+term2,df1,label1,df2=df2,label2=label2)
-            
+    FigsSubDirectory = ResultsSubDirectory+'/Figures/'; os.makedirs(
+        FigsSubDirectory, exist_ok=True)
+
     # Plot each term of the thermodynamic equation
     ThermDict = {}
     terms = ['AdvHTemp','SpOmega','dTdt','ResT']
