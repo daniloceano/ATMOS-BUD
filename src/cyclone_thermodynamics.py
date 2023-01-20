@@ -364,7 +364,7 @@ def MovingAnalysis(MovingObj,args):
         results_nc.append(da)
     out_nc = xr.merge(results_nc)
     fname = ResultsSubDirectory+ outfile_name+'.nc'
-    out_nc.to_netcdf(fname)
+    out_nc.to_netcdf(fname, mode='w',engine="netcdf4")
     print(fname+' created')
     
     # Save CSV files with all the terms stored above
@@ -381,6 +381,8 @@ def MovingAnalysis(MovingObj,args):
     plot_min_zeta_hgt(track, FigsDirectory)
     # Make timeseries
     os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory)
+    os.system("python ../plots/plot_maps.py "+ResultsSubDirectory)                              
+
     
 def FixedAnalysis(FixedObj):
     
@@ -436,7 +438,8 @@ def FixedAnalysis(FixedObj):
         results_nc.append(da)
     out_nc = xr.merge(results_nc)
     fname = ResultsSubDirectory+ outfile_name+'.nc'
-    out_nc.to_netcdf(fname)
+    os.system('rm '+fname)
+    out_nc.to_netcdf(fname, mode='w',engine="netcdf4")
     print(fname+' created')
                                                  
     # Save CSV files with all the terms stored above
@@ -449,7 +452,8 @@ def FixedAnalysis(FixedObj):
     max_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].max()
     plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory) 
 
-    os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory)                               
+    os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory) 
+    os.system("python ../plots/plot_maps.py "+ResultsSubDirectory)                              
     
 if __name__ == "__main__":
     
