@@ -19,6 +19,7 @@ from matplotlib import cm
 import matplotlib.colors as colors
 import sys
 import glob
+import os
 import xarray as xr
 
 def map_features(ax):
@@ -49,7 +50,7 @@ def grid_labels_params(ax,i):
     gl.yformatter = LATITUDE_FORMATTER
     return ax
 
-def LagrangianMaps(VariableData,FigsDirectory,fname):
+def map_variable(VariableData,FigsDirectory,fname):
     """
     Parameters
     ----------
@@ -65,15 +66,11 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
     Create maps for each time step for model levels closest to 1000,850,700,
     500,300 and 200 hPa.
     """
-    dfVars = pd.read_csv('./inputs/fvars',sep= ';',index_col=0,header=0)
-    LonIndexer,LatIndexer,TimeIndexer,LevelIndexer = \
-      dfVars.loc['Longitude']['Variable'],dfVars.loc['Latitude']['Variable'],\
-      dfVars.loc['Time']['Variable'],dfVars.loc['Vertical Level']['Variable']
-    trackfile = './inputs/track'
-    track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
     # limits for the map (represents the maximum limits of the lagrangian box)
-    westernlimit, easternlimit = track['Lon'].min()-7.55,track['Lon'].max()+7.55
-    southernlimit, northernlimit = track['Lat'].min()-7.55,track['Lat'].max()+7.55
+    westernlimit = VariableData[LonIndexer].min()
+    easternlimit = VariableData[LonIndexer].max()
+    southernlimit = VariableData[LatIndexer].min()
+    northernlimit = VariableData[LatIndexer].max()
     # projection
     proj = ccrs.PlateCarree() 
     # create figure
@@ -88,19 +85,13 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
     # loop through pressure levels
     for p,i in zip(MatchingLevels,range(len(MatchingLevels))):
         # Get current time and time strings
-        itime = VariableData[TimeIndexer].values
-        min_lon, max_lon = track.loc[itime]['Lon']-7.5,track.loc[itime]['Lon']+7.5
-        min_lat, max_lat = track.loc[itime]['Lat']-7.5,track.loc[itime]['Lat']+7.5
         # create subplot
         ax = fig.add_subplot(gs[i], projection=proj)
         ax.set_extent([westernlimit,easternlimit,southernlimit,northernlimit]) 
         # Add decorators and Brazil states
         grid_labels_params(ax,i)
         Brazil_states(ax)
-        # Slice data for the desired domain and pressure level
-        iData = VariableData.sel({LevelIndexer:p}).sel(
-            **{LatIndexer:slice(min_lat,max_lat),
-               LonIndexer: slice(min_lon,max_lon)})
+        iData = VariableData.sel({LevelIndexer:p})
         # get latitude and longitude
         lon,lat = iData[LonIndexer], iData[LatIndexer]
         # get data range
@@ -113,27 +104,16 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
         else:
             cmap = cmo.balance
             norm = colors.TwoSlopeNorm(vmin=min1, vcenter=0, vmax=max1)
-        # plot the selected box around the contours
-        ax.plot([min_lon,min_lon,max_lon,max_lon,min_lon],
-                [min_lat,max_lat,max_lat,min_lat,min_lat],
-                linewidth=1,c='#383838',zorder=500)
         # plot contours
         cf1 = ax.contourf(lon, lat, iData, cmap=cmap,norm=norm) 
         ax.contour(lon, lat, iData, cf1.levels,colors='#383838',
                    linewidths=0.25)
-        # get time string
-        timestr = pd.to_datetime(str(iData[TimeIndexer].values))
-        date = timestr.strftime('%Y-%m-%dT%H%MZ')
         # Title
-        title = VariableData.name+' ('+str(VariableData.units.values)+') ' 
-        title += 'at '+str(p)+' hPa for '+str(date)
+        title = VariableData.name
+        title += ' at '+str(p)+' hPa'
         ax.text(0.01,1.01,title,
                 transform=ax.transAxes, fontsize=16)
-        # plot the cyclone center
-        ax.scatter(track.loc[itime]['Lon'],track.loc[itime]['Lat'],
-                   zorder=1000, color='#383838',linewidth=2,edgecolor='k')
         # colorbar
-        v = np.linspace(min1, max1, 15, endpoint=True,dtype=int)
         cbar = plt.colorbar(cf1,fraction=0.046,pad=0.07,orientation='horizontal',
                             norm=norm)
         cbar.ax.tick_params(labelsize=10) 
@@ -142,12 +122,32 @@ def LagrangianMaps(VariableData,FigsDirectory,fname):
         # decorators
         map_features(ax)
     # save file
-    outfile = FigsDirectory+'/map_'+fname+'_'+str(date)
+    outfile = FigsDirectory+'/'+fname
     plt.savefig(outfile, bbox_inches='tight')
     print(outfile+' created!')
     
 if __name__ == "__main__":
 
     ResultsSubDirectory = sys.argv[1]
+    FigsSubDirectory = ResultsSubDirectory+'/Figures/maps/'; os.makedirs(
+        FigsSubDirectory, exist_ok=True)
+    
     results_data = glob.glob(ResultsSubDirectory+'/*.nc')[0]
     ds = xr.open_dataset(results_data, engine='netcdf4')
+    
+    periods = pd.read_csv('../inputs/periods',sep= ';',header=0)
+    dfVars = pd.read_csv('../inputs/fvars',sep= ';',index_col=0,header=0)
+    LonIndexer,LatIndexer,TimeIndexer,LevelIndexer = \
+      dfVars.loc['Longitude']['Variable'],dfVars.loc['Latitude']['Variable'],\
+      dfVars.loc['Time']['Variable'],dfVars.loc['Vertical Level']['Variable']
+    
+    for var in ['AdvHTemp', 'SpOmega','dTdt','ResT']:
+        
+        for i in range(len(periods)):
+            start,end = periods.iloc[i]['start'],periods.iloc[i]['end']
+            period =  periods.iloc[i]['Period']
+            dates = pd.to_datetime(ds[var][TimeIndexer])
+            # Get data for selected periods
+            data_period = ds[var].sel({TimeIndexer:slice(start,end)}).mean(
+                dim=TimeIndexer)
+            map_variable(data_period,FigsSubDirectory,var+'_'+period)
