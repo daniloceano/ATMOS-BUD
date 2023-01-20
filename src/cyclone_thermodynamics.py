@@ -438,7 +438,6 @@ def FixedAnalysis(FixedObj):
         results_nc.append(da)
     out_nc = xr.merge(results_nc)
     fname = ResultsSubDirectory+ outfile_name+'.nc'
-    os.system('rm '+fname)
     out_nc.to_netcdf(fname, mode='w',engine="netcdf4")
     print(fname+' created')
                                                  
