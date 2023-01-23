@@ -29,6 +29,7 @@ import xarray as xr
 import os
 import numpy as np
 import argparse
+import dask
 
 from calc import CalcAreaAverage
 from select_area import draw_box_map
@@ -163,12 +164,13 @@ class DataObject:
     """
     def __init__(self,NetCDF_data: xr.Dataset,
                  dfVars: pd.DataFrame,
-                 dfbox: pd.DataFrame=None):
+                 args: argparse.ArgumentParser):
         self.LonIndexer = dfVars.loc['Longitude']['Variable']
         self.LatIndexer = dfVars.loc['Latitude']['Variable']
         self.TimeIndexer = dfVars.loc['Time']['Variable']
         self.LevelIndexer = dfVars.loc['Vertical Level']['Variable']
         self.NetCDF_data = NetCDF_data
+                
         self.Temperature = self.NetCDF_data[dfVars.loc['Air Temperature']['Variable']] \
             * units(dfVars.loc['Air Temperature']['Units']).to('K')
         self.u = self.NetCDF_data[dfVars.loc['Eastward Wind Component']['Variable']] \
@@ -185,15 +187,48 @@ class DataObject:
             self.GeopotHeight = (self.NetCDF_data[dfVars.loc[
                 'Geopotential']['Variable']] * units(dfVars.loc[
                     'Geopotential']['Units']).to('m**2/s**2'))/g
-        self.Pressure = self.NetCDF_data[self.LevelIndexer]
+        self.Pressure = (self.NetCDF_data[self.LevelIndexer]
+                ) * units(self.NetCDF_data[self.LevelIndexer].units)
+        
+        # When using mfdataset the variables are not DataArrays! 
+        # Need to individually transform variables into DataArrays WHEN
+        # performing computations!!! Who was the mf that programmed this?
+ #        if args.gfs:
+ #            print('Some lazy programmer made Metpy to not work with Dask arrays\
+ # now I am converting all variables to DataArrays, it takes some time...')
+ #            self.Temperature = xr.DataArray(self.Temperature)
+ #            print(self.Temperature)
+ #            self.u = xr.DataArray(self.u) * units('m/s')
+ #            print(self.u)
+ #            self.v = xr.DataArray(self.v) * units('m/s')
+ #            print(self.v)
+ #            self.Omega = xr.DataArray(self.Omega) * units('Pa/s')
+ #            print(self.Omega)
+ #            self.GeopotHeight = xr.DataArray(self.GeopotHeight) * units('m')
+ #            print(self.GeopotHeight)
+            
         self.Theta = theta = potential_temperature(
-            self.Pressure,self.Temperature)
+            self.Pressure,self.Temperature).metpy.dequantify() * units.K
+        
+        # if args.gfs:
+        #     self.Temperature = xr.DataArray(self.Temperature.rechucnk(chunks=-1))
+        #     print('\n\n\n')
+        #     print(self.Temperature)
+        #     self.Temperature.expand_dims=({self.LonIndexer:self.NetCDF_data[self.LonIndexer],
+        #                      self.LatIndexer:self.NetCDF_data[self.LatIndexer],
+        #                      self.TimeIndexer:self.NetCDF_data[self.TimeIndexer],
+        #                      self.LevelIndexer:self.NetCDF_data[self.LevelIndexer]})
+        
         self.dTdt = self.Temperature.differentiate(
-                self.TimeIndexer,datetime_unit='s') / units('seconds')
-        self.AdvHTemp = self.HorizontalTemperatureAdvection()
-        self.sigma = (self.Temperature/theta) *theta.differentiate(
-            self.LevelIndexer)/units.hPa
+                self.TimeIndexer,datetime_unit='s').metpy.dequantify(
+                    ) * units('K/s')
+        self.AdvHTemp = self.HorizontalTemperatureAdvection().metpy.dequantify(
+            ) * units('K/s')
+        self.sigma = (self.Temperature/theta) * theta.differentiate(
+            self.LevelIndexer).metpy.dequantify() * units('K/hPa')
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
+
+        
         self.AdiabaticHeating = self.ResT*Cp_d
         
     def HorizontalTemperatureAdvection(self):
@@ -481,10 +516,9 @@ and a arbitraty box of 15°x15° is constructed.")
     group.add_argument("-c", "--choose", default = False,
     action='store_true', help = "For each time step, the user can choose the\
 domain by clicking on the screen.")
-    parser.add_argument("-m", "--multiple", default = False,
-    action='store_true', help = "open multiple files at once")
-    parser.add_argument("-p", "--plots", default = False,
-    action='store_true', help = "create default plots")
+    parser.add_argument("-g", "--gfs", default = False,
+    action='store_true', help = "open multiple  GFS files at once using cfgrib\
+ engine")
     
     args = parser.parse_args()
     
@@ -503,8 +537,11 @@ domain by clicking on the screen.")
     # Open file
     infile  = args.infile
     print('Opening file: '+infile)
-    if args.multiple:
-        NetCDF_data = convert_lon(xr.open_mfdataset(infile, ),
+    if args.gfs:
+        NetCDF_data = convert_lon(xr.open_mfdataset(infile, 
+                    engine='cfgrib', parallel=True,
+                    filter_by_keys={'typeOfLevel': 'isobaricInhPa'}, 
+                    combine='nested', concat_dim=TimeIndexer),
                               dfVars.loc['Longitude']['Variable'])
     else:
         NetCDF_data = convert_lon(xr.open_dataset(infile),
@@ -551,7 +588,7 @@ domain by clicking on the screen.")
     # Run the program
     if args.fixed:
         print('Running Fixed framework.')
-        FixedObj = DataObject(NetCDF_data,dfVars)
+        FixedObj = DataObject(NetCDF_data,dfVars, args)
         FixedAnalysis(FixedObj)
         print("--- %s seconds running Fixed framework ---" % (
             time.time() - start_time))
