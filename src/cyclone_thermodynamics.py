@@ -32,6 +32,7 @@ import argparse
 import dask
 
 from calc import CalcAreaAverage
+from calc import Differentiate
 from select_area import draw_box_map
 from select_area import initial_domain
 
@@ -170,6 +171,14 @@ class DataObject:
         self.TimeIndexer = dfVars.loc['Time']['Variable']
         self.LevelIndexer = dfVars.loc['Vertical Level']['Variable']
         self.NetCDF_data = NetCDF_data
+        
+        # When using mfdataset the variables are not DataArrays! 
+        # Need to individually transform variables into DataArrays WHEN
+        # performing computations!!! Who was the mf that programmed this?
+        if args.gfs:
+            print("loading dask array into memory, if it's too slow, complain\
+with the guys from metpy")
+            self.NetCDF_data = self.NetCDF_data.load()
                 
         self.Temperature = self.NetCDF_data[dfVars.loc['Air Temperature']['Variable']] \
             * units(dfVars.loc['Air Temperature']['Units']).to('K')
@@ -189,46 +198,15 @@ class DataObject:
                     'Geopotential']['Units']).to('m**2/s**2'))/g
         self.Pressure = (self.NetCDF_data[self.LevelIndexer]
                 ) * units(self.NetCDF_data[self.LevelIndexer].units)
-        
-        # When using mfdataset the variables are not DataArrays! 
-        # Need to individually transform variables into DataArrays WHEN
-        # performing computations!!! Who was the mf that programmed this?
- #        if args.gfs:
- #            print('Some lazy programmer made Metpy to not work with Dask arrays\
- # now I am converting all variables to DataArrays, it takes some time...')
- #            self.Temperature = xr.DataArray(self.Temperature)
- #            print(self.Temperature)
- #            self.u = xr.DataArray(self.u) * units('m/s')
- #            print(self.u)
- #            self.v = xr.DataArray(self.v) * units('m/s')
- #            print(self.v)
- #            self.Omega = xr.DataArray(self.Omega) * units('Pa/s')
- #            print(self.Omega)
- #            self.GeopotHeight = xr.DataArray(self.GeopotHeight) * units('m')
- #            print(self.GeopotHeight)
             
         self.Theta = theta = potential_temperature(
-            self.Pressure,self.Temperature).metpy.dequantify() * units.K
-        
-        # if args.gfs:
-        #     self.Temperature = xr.DataArray(self.Temperature.rechucnk(chunks=-1))
-        #     print('\n\n\n')
-        #     print(self.Temperature)
-        #     self.Temperature.expand_dims=({self.LonIndexer:self.NetCDF_data[self.LonIndexer],
-        #                      self.LatIndexer:self.NetCDF_data[self.LatIndexer],
-        #                      self.TimeIndexer:self.NetCDF_data[self.TimeIndexer],
-        #                      self.LevelIndexer:self.NetCDF_data[self.LevelIndexer]})
-        
+            self.Pressure,self.Temperature)
         self.dTdt = self.Temperature.differentiate(
-                self.TimeIndexer,datetime_unit='s').metpy.dequantify(
-                    ) * units('K/s')
-        self.AdvHTemp = self.HorizontalTemperatureAdvection().metpy.dequantify(
-            ) * units('K/s')
+                self.TimeIndexer,datetime_unit='h') / units('hour')
+        self.AdvHTemp = self.HorizontalTemperatureAdvection()
         self.sigma = (self.Temperature/theta) * theta.differentiate(
-            self.LevelIndexer).metpy.dequantify() * units('K/hPa')
+            self.LevelIndexer) / units(str(self.Pressure.metpy.units))
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
-
-        
         self.AdiabaticHeating = self.ResT*Cp_d
         
     def HorizontalTemperatureAdvection(self):
@@ -380,13 +358,13 @@ def MovingAnalysis(MovingObj,args):
                 
         # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
-                            ZonalAverage=True).metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ s')
         dfDict['SpOmega'][itime] = CalcAreaAverage(SpOmega,
-                            ZonalAverage=True).metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ s')
         dfDict['dTdt'][itime] = CalcAreaAverage(dTdt,
-                            ZonalAverage=True).metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ s')
         dfDict['ResT'][itime] = CalcAreaAverage(ResT,
-                            ZonalAverage=True).metpy.convert_units('K/ day')
+                            ZonalAverage=True).metpy.convert_units('K/ s')
         
     
     print('saving results to nc file...')
@@ -446,17 +424,17 @@ def FixedAnalysis(FixedObj):
         # Store area averages for each term of the thermodynamic equation
         dfDict['AdvHTemp'][itime] = CalcAreaAverage(FixedObj.AdvHTemp.sel(
             {FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ day')
+            ZonalAverage=True).metpy.convert_units('K/ s')
         dfDict['SpOmega'][itime] = CalcAreaAverage(FixedObj.sigma.sel(
             {FixedObj.TimeIndexer:t})*
             FixedObj.Omega.sel({FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ day')
+            ZonalAverage=True).metpy.convert_units('K/ s')
         dfDict['dTdt'][itime] = CalcAreaAverage(FixedObj.dTdt.sel(
             {FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ day')
+            ZonalAverage=True).metpy.convert_units('K/ s')
         dfDict['ResT'][itime] = CalcAreaAverage(FixedObj.ResT.sel(
             {FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ day')
+            ZonalAverage=True).metpy.convert_units('K/ s')
     
     term_results = [FixedObj.AdvHTemp, FixedObj.Omega*FixedObj.sigma,
                     FixedObj.dTdt, FixedObj.ResT]
@@ -594,7 +572,7 @@ domain by clicking on the screen.")
             time.time() - start_time))
     if args.track or args.choose:
         print('Running Moving framework.')
-        MovingObj = DataObject(NetCDF_data,dfVars)
+        MovingObj = DataObject(NetCDF_data,dfVars, args)
         MovingAnalysis(MovingObj,args)
         print("--- %s seconds for running Moving framework ---" % (
             time.time() - start_time))            

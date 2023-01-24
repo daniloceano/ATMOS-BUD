@@ -16,6 +16,8 @@ danilo.oceano@gmail.com
 
 import numpy as np
 
+from metpy import units
+
 def CalcZonalAverage(VariableData):
     """
     Computates variable zonal average of some variable, for all z
