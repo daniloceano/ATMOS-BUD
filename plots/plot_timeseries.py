@@ -193,7 +193,7 @@ def time_series_thermodyn(ThermDict):
             ax.set_title(str(p)+' hPa ',c='#383838',fontsize=12)
             ax.grid(c='#383838',linewidth=0.25,linestyle='-',alpha=.5)
             if col == 0:
-                ax.set_ylabel('K day-1',fontsize=12, c='#383838')
+                ax.set_ylabel('K s-1',fontsize=12, c='#383838')
             else:
                 ax.set_yticklabels([])
             if col == 2 and row == 0:
@@ -229,7 +229,7 @@ def plot_Hovmoller(df,units,fname):
     pdtime = pd.to_datetime(times) 
     plt.close('all')
     fig, ax = plt.subplots(figsize=(14,10))
-    levs = sorted(df.index.values, reverse=True)
+    levs = df.index
     max1,min1 = df.max().max(), df.min().min()
     interval = 16
     if min1 < 0:
@@ -250,11 +250,12 @@ def plot_Hovmoller(df,units,fname):
                     colors='#383838', extend='both',norm=norm,
                     levels=clev, linewidths=0.5)
     ax.tick_params(axis='x',labelrotation=20)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HZ'))
     ax.set_title(units,fontdict={'fontsize':14})
     ax.set_ylim(levs[0],levs[-1])
     ax.xaxis.set_tick_params(labelsize=16)
     ax.yaxis.set_tick_params(labelsize=16) 
+    plt.gca().invert_yaxis()
     # colorbar
     cb_ax = fig.add_axes([0.92, 0.1, 0.02, 0.8])
     cbar = fig.colorbar(cf, cax=cb_ax)
@@ -300,7 +301,7 @@ def plot_periods_vertical(ThermDict):
         ax.axvline(0,c='#383838',linewidth=0.5,zorder=1)
         ax.xaxis.set_tick_params(labelsize=16)
         ax.yaxis.set_tick_params(labelsize=16)
-        ax.set_xlabel('(K day-1)',fontsize=18)
+        ax.set_xlabel('(K s-1)',fontsize=18)
         ax.set_ylabel('Pressure (hPa)',fontsize=18)
         plt.legend(prop={'size': 18})
         plt.title(period,fontsize=20)
@@ -324,7 +325,7 @@ if __name__ == "__main__":
     for term in terms:
         ThermDict[term] = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
         time_series_thermodyn(ThermDict)
-        plot_Hovmoller(ThermDict[term],term+' [K day-1]',term)
+        plot_Hovmoller(ThermDict[term],term+' [K s-1]',term)
     
     # Plot vertical profiles for the terms, for each period of the system
     # life cycle
