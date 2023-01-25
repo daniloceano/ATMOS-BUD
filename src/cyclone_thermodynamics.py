@@ -203,7 +203,7 @@ with the guys from metpy")
                 self.TimeIndexer,datetime_unit='h') / units('hour')
         self.AdvHTemp = self.HorizontalTemperatureAdvection()
         self.sigma = (self.Temperature/theta) * theta.sortby(
-            self.LevelIndexer, ascedning=False).differentiate(
+            self.LevelIndexer, ascending=False).differentiate(
             self.LevelIndexer) / units(str(self.Pressure.metpy.units))
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
