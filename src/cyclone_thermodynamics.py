@@ -202,8 +202,7 @@ with the guys from metpy")
         self.dTdt = self.Temperature.differentiate(
                 self.TimeIndexer,datetime_unit='h') / units('hour')
         self.AdvHTemp = self.HorizontalTemperatureAdvection()
-        self.sigma = (self.Temperature/theta) * theta.sortby(
-            self.LevelIndexer, ascending=False).differentiate(
+        self.sigma = -1 * (self.Temperature/theta) * theta.differentiate(
             self.LevelIndexer) / units(str(self.Pressure.metpy.units))
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
@@ -213,15 +212,11 @@ with the guys from metpy")
             self.NetCDF_data[self.LatIndexer]
         cos_lats = self.NetCDF_data["coslats"]
         # Differentiate temperature in respect to longitude and latitude
-        dTdlambda = (self.Temperature.sortby(self.LonIndexer, ascending=False)
-                     ).differentiate(self.LonIndexer)
-        dTdphi = (self.Temperature.sortby(self.LatIndexer, ascending=False)
-                     ).differentiate(self.LatIndexer)
+        dTdlambda = self.Temperature.differentiate(self.LonIndexer)
+        dTdphi = self.Temperature.differentiate(self.LatIndexer)
         # Get the values for width and length in meters
-        dx = np.deg2rad(lons.sortby(self.LonIndexer, ascending=False
-                                ).differentiate(self.LonIndexer))*cos_lats*Re
-        dy = np.deg2rad(lats.sortby(self.LatIndexer, ascending=False
-                                    ).differentiate(self.LatIndexer))*Re
+        dx = np.deg2rad(lons.differentiate(self.LonIndexer))*cos_lats*Re
+        dy = np.deg2rad(lats.differentiate(self.LatIndexer))*Re
         AdvHT = -1* ((self.u*dTdlambda/dx)+(self.v*dTdphi/dy)) 
         return AdvHT
 
