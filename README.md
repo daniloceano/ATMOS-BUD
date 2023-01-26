@@ -1,6 +1,6 @@
 # cyclone_thermodynamics
 
-This program solves the Quasi-Geostrophic Thermodynamic equation for a closed region on the atmosphere, explicitly computing each term and estimating the diabatic heating term (R_{t}) as a residual:
+This program solves the Quasi-Geostrophic Thermodynamic equation for a closed region on the atmosphere, explicitly computing each term and estimating the diabatic heating term (R_[t]) as a residual:
 
 ![image](https://user-images.githubusercontent.com/56005607/214878079-a359b897-2388-4197-bd95-3a0d0038ceda.png)
 
