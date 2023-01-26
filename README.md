@@ -31,7 +31,7 @@ After finishing the computations, it will be created a ["track"](### Auxiliary f
 
 #### Using a pre-defined domain
 
-By using the -m [flag](#Flags), the program will create the computational domain from a ["track"](### Auxiliary files)  text file from the ["inputs"](### Auxiliary files) directory. This file should contain, for each time step, the domain central position:
+By using the -t [flag](#Flags), the program will create the computational domain from a ["track"](### Auxiliary files)  text file from the ["inputs"](### Auxiliary files) directory. This file should contain, for each time step, the domain central position:
 
 ![image](https://user-images.githubusercontent.com/56005607/206721056-61fa32ce-aa5d-4f16-af28-c46ac2a9bf88.png)
 
@@ -51,10 +51,6 @@ The "inputs" file contains auxiliary files that the program uses, depending on t
 
 The [inputs](inputs) directory contains some examples for using those files.
 
-## File naming system
-
-Alhtough it is not necessary to, it is advisible to use a file naming convenction such as "object-of-study_file-source.nc". For example, if you wish to compute the energetics of the Katrina Hurricane, using data from the ERA5 model, the file name should be "Katrina_ERA5.nc". May you wish to use compund names for the system, separete then using a "-", for example: "Cyclone-20100101_NCEP-R2.nc".
-
 ## Flags
 
 - -m, --moving
@@ -65,9 +61,13 @@ Creates a fixed domain (see [Fixed domain](### Fixed domain))
 
 For each time step, interactively select the domain (see [Moving domain](### Moving domain))
 
-- -m, --moving
+- -t, --track
 
 Creates a domain that follows the system (see [Moving domain](### Moving domain))
+
+- -o, --outname
+
+Choose a name for saving the results (optional)
 
 - -g, --geopotential
 
