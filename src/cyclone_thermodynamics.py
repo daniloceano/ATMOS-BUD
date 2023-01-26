@@ -495,6 +495,9 @@ domain by clicking on the screen.")
     parser.add_argument("-g", "--gfs", default = False,
     action='store_true', help = "open multiple  GFS files at once using cfgrib\
  engine")
+    parser.add_argument("-o", "--outname", default = False, type=str,
+    help = "choose a name for saving results (default is\
+ the same as infile)")
     
     args = parser.parse_args()
     
@@ -542,8 +545,11 @@ domain by clicking on the screen.")
     
     # Directory where results will be stored
     ResultsMainDirectory = '../Results/'
+    if args.outname:
+        outfile_name = args.outname
     # Append data method to outfile name
-    outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_'+method
+    else:
+        outfile_name = ''.join(infile.split('/')[-1].split('.nc'))+'_'+method
     # Each dataset of results have its own directory, allowing to store results
     # from more than one experiment at each time
     ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
