@@ -20,6 +20,8 @@ from metpy.constants import Re
 from metpy.calc import potential_temperature
 from metpy.calc import vorticity
 from metpy.calc import wind_speed
+from metpy.calc import divergence
+from metpy.calc import coriolis_parameter
 from metpy.constants import g
 
 from scipy.signal import savgol_filter    
@@ -37,6 +39,8 @@ from select_area import initial_domain
 from plot_domains import plot_fixed_domain
 from plot_domains import plot_track
 from plot_domains import plot_min_zeta_hgt
+
+import glob
 
 
 import time
@@ -196,7 +200,17 @@ with the guys from metpy")
                     'Geopotential']['Units']).to('m**2/s**2'))/g
         self.Pressure = (self.NetCDF_data[self.LevelIndexer]
                 ) * units(self.NetCDF_data[self.LevelIndexer].units)
+        
+        self.lons  = self.NetCDF_data[self.LonIndexer]
+        self.lats = self.NetCDF_data[self.LatIndexer]
+        self.cos_lats = self.NetCDF_data["coslats"]
+        # Get the values for width and length in meters
+        self.dx = np.deg2rad(self.lons.differentiate(self.LonIndexer)
+                        )*self.cos_lats*Re
+        self.dy = np.deg2rad(self.lats.differentiate(self.LatIndexer))*Re
+        self.f = coriolis_parameter(self.lats)
             
+        ## Thermodynamic terms
         self.Theta = theta = potential_temperature(
             self.Pressure,self.Temperature)
         self.dTdt = self.Temperature.differentiate(
@@ -207,18 +221,37 @@ with the guys from metpy")
         self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
         
+        ## Vorticity terms
+        self.zeta = vorticity(self.u, self.v)
+        self.AdvHZ = self.HorizontalVorticityAdvection()
+        self.DivH = divergence(self.u, self.v)
+        self.fDivH = -1*self.f*self.DivH
+        self.ZetaDivH = -1*(self.zeta*self.DivH)
+        self.Beta = (self.f*self.cos_lats).differentiate("rlats")
+        self.vxBeta=-1*(self.v*self.Beta)
+        self.tilting = self.TiltingTerm()
+        
     def HorizontalTemperatureAdvection(self):
-        lons,lats  = self.NetCDF_data[self.LonIndexer],\
-            self.NetCDF_data[self.LatIndexer]
-        cos_lats = self.NetCDF_data["coslats"]
-        # Differentiate temperature in respect to longitude and latitude
         dTdlambda = self.Temperature.differentiate(self.LonIndexer)
         dTdphi = self.Temperature.differentiate(self.LatIndexer)
-        # Get the values for width and length in meters
-        dx = np.deg2rad(lons.differentiate(self.LonIndexer))*cos_lats*Re
-        dy = np.deg2rad(lats.differentiate(self.LatIndexer))*Re
-        AdvHT = -1* ((self.u*dTdlambda/dx)+(self.v*dTdphi/dy)) 
+        AdvHT = -1* ((self.u*dTdlambda/self.dx)+(self.v*dTdphi/self.dy)) 
         return AdvHT
+    
+    def HorizontalVorticityAdvection(self):
+        dZdlambda = self.Temperature.differentiate(self.LonIndexer)
+        dZdphi = self.Temperature.differentiate(self.LatIndexer)
+        AdvHZ = -1* ((self.u*dZdlambda/self.dx)+(self.v*dZdphi/self.dy)) 
+        return AdvHZ
+    
+    def TiltingTerm(self):
+        dOmegalambda = self.Omega.differentiate(self.LonIndexer)
+        dOmegadphi = self.Omega.differentiate(self.LatIndexer)
+        dOmegady = dOmegalambda/self.dy
+        dOmegadx = dOmegadphi/self.dx
+        dudp = self.u.differentiate(self.LevelIndexer)
+        dvdp = self.v.differentiate(self.LevelIndexer)
+        return (dOmegady*dudp) - (dOmegadx*dvdp)
+    
 
 def MovingAnalysis(MovingObj,args):
     """
@@ -256,7 +289,9 @@ def MovingAnalysis(MovingObj,args):
         metpy.convert_units('hPa').values
     
     # Create a dictionary for saving area averages of each term
-    stored_terms = ['AdvHTemp','SpOmega','dTdt','ResT'] 
+    stored_terms = ['AdvHTemp','SpOmega','dTdt','ResT', 
+                    'OmegaAve','dZdt','AdvHZeta','AdvVZeta',
+                    'vxBeta','ZetaxDivH','fxDivH', 'Tilting''ResV','ZetaAve'] 
     dfDict = {}
     for term in stored_terms:
         dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
@@ -272,7 +307,7 @@ def MovingAnalysis(MovingObj,args):
         iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
         ight_850 = MovingObj.GeopotHeight.sel({TimeIndexer:t}
                                                ).sel({LevelIndexer:850})
-        zeta = vorticity(iu_850, iv_850).metpy.dequantify()
+        zeta = MovingObj.Zeta.sel({TimeIndexer:t}).sel({LevelIndexer:850})
         # Apply filter when using high resolution gridded data
         dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
         if dx < 1:
@@ -522,6 +557,7 @@ domain by clicking on the screen.")
                     filter_by_keys={'typeOfLevel': 'isobaricInhPa'}, 
                     combine='nested', concat_dim=TimeIndexer),
                               dfVars.loc['Longitude']['Variable'])
+        
     else:
         NetCDF_data = convert_lon(xr.open_dataset(infile),
                               dfVars.loc['Longitude']['Variable'])
