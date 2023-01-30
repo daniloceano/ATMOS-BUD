@@ -321,11 +321,11 @@ if __name__ == "__main__":
 
     # Plot each term of the thermodynamic equation
     ThermDict = {}
-    terms = ['AdvHTemp','SpOmega','dTdt','ResT']
+    terms = ['AdvHTemp','Sigma', 'Omega','dTdt','ResT']
     for term in terms:
         ThermDict[term] = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
         time_series_thermodyn(ThermDict)
-        plot_Hovmoller(ThermDict[term],term+' [K s-1]',term)
+        plot_Hovmoller(ThermDict[term],term,term)
     
     # Plot vertical profiles for the terms, for each period of the system
     # life cycle

@@ -199,7 +199,7 @@ with the guys from metpy")
                 'Geopotential']['Variable']] * units(dfVars.loc[
                     'Geopotential']['Units']).to('m**2/s**2'))/g
         self.Pressure = (self.NetCDF_data[self.LevelIndexer]
-                ) * units(self.NetCDF_data[self.LevelIndexer].units)
+                ) * units(self.NetCDF_data[self.LevelIndexer].units).to('Pa')
         
         self.lons  = self.NetCDF_data[self.LonIndexer]
         self.lats = self.NetCDF_data[self.LatIndexer]
@@ -214,42 +214,54 @@ with the guys from metpy")
         self.Theta = theta = potential_temperature(
             self.Pressure,self.Temperature)
         self.dTdt = self.Temperature.differentiate(
-                self.TimeIndexer,datetime_unit='h') / units('hour')
+                self.TimeIndexer,datetime_unit='s') / units('s')
         self.AdvHTemp = self.HorizontalTemperatureAdvection()
-        self.sigma = -1 * (self.Temperature/theta) * theta.differentiate(
+        self.AdvVTemp = -1 * (self.Temperature.differentiate(self.LevelIndexer
+                    ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
+        self.Sigma = (-1 * (self.Temperature/theta) * theta.differentiate(
             self.LevelIndexer) / units(str(self.Pressure.metpy.units))
-        self.ResT =  self.dTdt - self.AdvHTemp - (self.sigma * self.Omega)
+            ).metpy.convert_units('K / Pa')
+        self.ResT =  self.dTdt - self.AdvHTemp - (self.Sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
         
         ## Vorticity terms
-        self.zeta = vorticity(self.u, self.v)
-        self.AdvHZ = self.HorizontalVorticityAdvection()
+        self.Zeta = vorticity(self.u, self.v)
+        self.dZdt = self.Zeta.differentiate(
+                self.TimeIndexer,datetime_unit='s') / units('s')
+        self.AdvHZeta = self.HorizontalVorticityAdvection()
+        self.AdvVZeta = -1 * (self.Zeta.differentiate(self.LevelIndexer
+                    ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
         self.DivH = divergence(self.u, self.v)
-        self.fDivH = -1*self.f*self.DivH
-        self.ZetaDivH = -1*(self.zeta*self.DivH)
-        self.Beta = (self.f*self.cos_lats).differentiate("rlats")
-        self.vxBeta=-1*(self.v*self.Beta)
-        self.tilting = self.TiltingTerm()
+        self.fDivH = -1 * self.f * self.DivH
+        self.ZetaDivH = -1 * (self.Zeta * self.DivH)
+        self.Beta = (self.f).differentiate(self.LatIndexer)/self.dy
+        self.vxBeta = -1 * (self.v * self.Beta)
+        self.Tilting = self.TiltingTerm()
+        self.SumVorticity = self.AdvHZeta + self.AdvVZeta + self.vxBeta + \
+            self.ZetaDivH + self.fDivH + self.Tilting
+        self.ResZ = self.dZdt - self.SumVorticity
         
     def HorizontalTemperatureAdvection(self):
         dTdlambda = self.Temperature.differentiate(self.LonIndexer)
         dTdphi = self.Temperature.differentiate(self.LatIndexer)
-        AdvHT = -1* ((self.u*dTdlambda/self.dx)+(self.v*dTdphi/self.dy)) 
+        AdvHT = -1 * ((self.u*dTdlambda/self.dx)+(self.v*dTdphi/self.dy)) 
         return AdvHT
     
     def HorizontalVorticityAdvection(self):
-        dZdlambda = self.Temperature.differentiate(self.LonIndexer)
-        dZdphi = self.Temperature.differentiate(self.LatIndexer)
-        AdvHZ = -1* ((self.u*dZdlambda/self.dx)+(self.v*dZdphi/self.dy)) 
-        return AdvHZ
+        dZdlambda = self.Zeta.differentiate(self.LonIndexer)
+        dZdphi = self.Zeta.differentiate(self.LatIndexer)  
+        AdvHZeta = -1 * ((self.u*dZdlambda/self.dx) + (self.v*dZdphi/self.dy)) 
+        return AdvHZeta
     
     def TiltingTerm(self):
         dOmegalambda = self.Omega.differentiate(self.LonIndexer)
         dOmegadphi = self.Omega.differentiate(self.LatIndexer)
         dOmegady = dOmegalambda/self.dy
         dOmegadx = dOmegadphi/self.dx
-        dudp = self.u.differentiate(self.LevelIndexer)
-        dvdp = self.v.differentiate(self.LevelIndexer)
+        dudp = self.u.differentiate(self.LevelIndexer
+                                ) / (1 * self.Pressure.metpy.units).to('Pa')
+        dvdp = self.v.differentiate(self.LevelIndexer
+                                ) /(1 * self.Pressure.metpy.units).to('Pa')
         return (dOmegady*dudp) - (dOmegadx*dvdp)
     
 
@@ -289,9 +301,9 @@ def MovingAnalysis(MovingObj,args):
         metpy.convert_units('hPa').values
     
     # Create a dictionary for saving area averages of each term
-    stored_terms = ['AdvHTemp','SpOmega','dTdt','ResT', 
-                    'OmegaAve','dZdt','AdvHZeta','AdvVZeta',
-                    'vxBeta','ZetaxDivH','fxDivH', 'Tilting''ResV','ZetaAve'] 
+    stored_terms = ['AdvHTemp','AdvVTemp', 'Sigma','Omega','dTdt','ResT', 
+                    'Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
+                   'ZetaDivH','fDivH', 'Tilting', 'ResZ'] 
     dfDict = {}
     for term in stored_terms:
         dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
@@ -369,40 +381,21 @@ def MovingAnalysis(MovingObj,args):
             {MovingObj.LatIndexer:min_lat}, method='nearest'))
         NorthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
             {MovingObj.LatIndexer:max_lat}, method='nearest'))
-    
-        sigma = MovingObj.sigma.sel({MovingObj.TimeIndexer:t}).sel(
-            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        omega = MovingObj.Omega.sel({MovingObj.TimeIndexer:t}).sel(
-            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
         
-        # Compute each term of the thermodynamic equation
-        AdvHTemp = MovingObj.AdvHTemp.sel({MovingObj.TimeIndexer:t}).sel(
-            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        dTdt = MovingObj.dTdt.sel({MovingObj.TimeIndexer:t}).sel(
-            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        ResT = MovingObj.ResT.sel({MovingObj.TimeIndexer:t}).sel(
-            **{MovingObj.LatIndexer:slice(SouthernLimit,NorthernLimit),
-               MovingObj.LonIndexer: slice(WesternLimit,EasternLimit)})
-        SpOmega = omega * sigma
-                
-        # Store area averages for each term of the thermodynamic equation
-        dfDict['AdvHTemp'][itime] = CalcAreaAverage(AdvHTemp,
-                            ZonalAverage=True).metpy.convert_units('K/ s')
-        dfDict['SpOmega'][itime] = CalcAreaAverage(SpOmega,
-                            ZonalAverage=True).metpy.convert_units('K/ s')
-        dfDict['dTdt'][itime] = CalcAreaAverage(dTdt,
-                            ZonalAverage=True).metpy.convert_units('K/ s')
-        dfDict['ResT'][itime] = CalcAreaAverage(ResT,
-                            ZonalAverage=True).metpy.convert_units('K/ s')
-        
+        for term in stored_terms:
+            term_sliced = getattr(MovingObj,term).sel({MovingObj.TimeIndexer:t}
+                                ).sel(**{MovingObj.LatIndexer:slice(
+                                SouthernLimit,NorthernLimit),
+                                MovingObj.LonIndexer: slice(
+                                        WesternLimit,EasternLimit)})
+            dfDict[term][itime] = CalcAreaAverage(term_sliced,
+                                ZonalAverage=True)
     
     print('saving results to nc file...')
-    term_results = [MovingObj.AdvHTemp, MovingObj.sigma*MovingObj.Omega,
-                    MovingObj.dTdt,MovingObj.ResT]
+    term_results = []
+    for term in stored_terms:
+        term_results.append(getattr(MovingObj,term))
+    
     results_nc = []
     for term, da in zip(stored_terms,term_results):
         da =  da.metpy.dequantify()
@@ -410,6 +403,7 @@ def MovingAnalysis(MovingObj,args):
         results_nc.append(da)
     out_nc = xr.merge(results_nc)
     fname = ResultsSubDirectory+ outfile_name+'.nc'
+    os.system('rm '+fname)
     out_nc.to_netcdf(fname, mode='w',engine="netcdf4")
     print(fname+' created')
     
@@ -424,10 +418,7 @@ def MovingAnalysis(MovingObj,args):
                  index=False, sep=";")
 
     plot_track(track, FigsDirectory)
-    plot_min_zeta_hgt(track, FigsDirectory)
-    # Make timeseries
-    os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory)
-    os.system("python ../plots/plot_maps.py "+ResultsSubDirectory)                              
+    plot_min_zeta_hgt(track, FigsDirectory)                          
 
     
 def FixedAnalysis(FixedObj):
@@ -437,7 +428,9 @@ def FixedAnalysis(FixedObj):
     pres_levels = FixedObj.Temperature[FixedObj.LevelIndexer].\
         metpy.convert_units('hPa').values
         
-    stored_terms = ['AdvHTemp','SpOmega','dTdt','ResT'] # thermodyn. eq. terms
+    stored_terms = ['AdvHTemp','Sigma', 'Omega','dTdt','ResT', 
+                   'Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
+                  'ZetaDivH','fDivH', 'Tilting', 'ResZ'] 
     
     # Dictionary to save DataArray results and transform into nc later
     results_nc = {}
@@ -454,29 +447,16 @@ def FixedAnalysis(FixedObj):
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         print("Storing results for: "+datestr)
                 
-        # Store area averages for each term of the thermodynamic equation
-        dfDict['AdvHTemp'][itime] = CalcAreaAverage(FixedObj.AdvHTemp.sel(
-            {FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ s')
-        dfDict['SpOmega'][itime] = CalcAreaAverage(FixedObj.sigma.sel(
-            {FixedObj.TimeIndexer:t})*
-            FixedObj.Omega.sel({FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ s')
-        dfDict['dTdt'][itime] = CalcAreaAverage(FixedObj.dTdt.sel(
-            {FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ s')
-        dfDict['ResT'][itime] = CalcAreaAverage(FixedObj.ResT.sel(
-            {FixedObj.TimeIndexer:t}),
-            ZonalAverage=True).metpy.convert_units('K/ s')
-    
-    term_results = [FixedObj.AdvHTemp, FixedObj.Omega*FixedObj.sigma,
-                    FixedObj.dTdt, FixedObj.ResT]
-    for term,r in zip(stored_terms,term_results):
-        results_nc[term].append(r.metpy.dequantify().rename(term))
-    
+        for term in stored_terms:
+            term_sliced = getattr(FixedObj,term).sel({FixedObj.TimeIndexer:t})
+            dfDict[term][itime] = CalcAreaAverage(term_sliced,
+                                ZonalAverage=True)
+
     print('saving results to nc file...')
-    term_results = [FixedObj.AdvHTemp, FixedObj.sigma*FixedObj.Omega,
-                    FixedObj.dTdt,FixedObj.ResT]
+    term_results = []
+    for term in stored_terms:
+        term_results.append(getattr(MovingObj,term))
+        
     results_nc = []
     for term, da in zip(stored_terms,term_results):
         da =  da.metpy.dequantify()
@@ -496,9 +476,7 @@ def FixedAnalysis(FixedObj):
     min_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].min()
     max_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].max()
     plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory) 
-
-    os.system("python ../plots/plot_timeseries.py "+ResultsSubDirectory) 
-    os.system("python ../plots/plot_maps.py "+ResultsSubDirectory)                              
+                          
     
 if __name__ == "__main__":
     
@@ -589,14 +567,12 @@ domain by clicking on the screen.")
     # Each dataset of results have its own directory, allowing to store results
     # from more than one experiment at each time
     ResultsSubDirectory = ResultsMainDirectory+'/'+outfile_name+'/'
-    # Subdirectory for saving figures and maps
+    # Subdirectory for saving figures
     FigsDirectory = ResultsSubDirectory+'Figures/'
-    MapsDirectory = FigsDirectory+'maps'
     # Check if the required directories exists. If not, creates them
     check_create_folder(ResultsMainDirectory)
     check_create_folder(ResultsSubDirectory)
     check_create_folder(FigsDirectory)
-    check_create_folder(MapsDirectory)
     # backup of box_limits and track file for reproductability
     if args.fixed:
         os.system('cp ../inputs/box_limits '+ResultsSubDirectory)
