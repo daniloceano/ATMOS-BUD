@@ -141,7 +141,7 @@ if __name__ == "__main__":
       dfVars.loc['Longitude']['Variable'],dfVars.loc['Latitude']['Variable'],\
       dfVars.loc['Time']['Variable'],dfVars.loc['Vertical Level']['Variable']
     
-    for var in ['AdvHTemp', 'SpOmega','dTdt','ResT']:
+    for var in ['AdvHTemp','Sigma', 'Omega','dTdt','ResT']:
         
         for i in range(len(periods)):
             start,end = periods.iloc[i]['start'],periods.iloc[i]['end']
@@ -150,4 +150,7 @@ if __name__ == "__main__":
             # Get data for selected periods
             data_period = ds[var].sel({TimeIndexer:slice(start,end)}).mean(
                 dim=TimeIndexer)
-            map_variable(data_period,FigsSubDirectory,var+'_'+period)
+            try:
+                map_variable(data_period,FigsSubDirectory,var+'_'+period)
+            except:
+                print('issues when plotting periods, check iputs/periods')
