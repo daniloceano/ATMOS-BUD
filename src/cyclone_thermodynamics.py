@@ -296,7 +296,12 @@ def MovingAnalysis(MovingObj,args):
     # Dictionary to save DataArray results and transform into nc later
     results_nc = {}
     
-    timesteps = MovingObj.NetCDF_data[MovingObj.TimeIndexer]
+    TimeIndexer = MovingObj.TimeIndexer
+    LevelIndexer = MovingObj.LevelIndexer
+    LonIndexer = MovingObj.LonIndexer
+    LatIndexer = MovingObj.LatIndexer
+    
+    timesteps = MovingObj.NetCDF_data[TimeIndexer]
     pres_levels = MovingObj.Temperature[MovingObj.LevelIndexer].\
         metpy.convert_units('hPa').values
     
@@ -319,7 +324,7 @@ def MovingAnalysis(MovingObj,args):
         iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
         ight_850 = MovingObj.GeopotHeight.sel({TimeIndexer:t}
                                                ).sel({LevelIndexer:850})
-        zeta = MovingObj.Zeta.sel({TimeIndexer:t}).sel({LevelIndexer:850})
+        zeta = vorticity(iu_850, iv_850).metpy.dequantify()
         # Apply filter when using high resolution gridded data
         dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
         if dx < 1:
