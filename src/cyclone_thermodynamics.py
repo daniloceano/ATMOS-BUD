@@ -460,7 +460,7 @@ def FixedAnalysis(FixedObj):
     print('saving results to nc file...')
     term_results = []
     for term in stored_terms:
-        term_results.append(getattr(MovingObj,term))
+        term_results.append(getattr(FixedObj,term))
         
     results_nc = []
     for term, da in zip(stored_terms,term_results):
