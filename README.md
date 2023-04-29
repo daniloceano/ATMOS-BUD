@@ -39,7 +39,7 @@ The resulting domain will be 15°x15° in size. Optionally, the user can add the
 
 ## Inputs
 
-###Data
+### Data
 
 The program opens either NetCDF or Grib data. The input variables are the zonal and meridional wind components components, the vertical velocity in pressure levels (omega), air temperature and geopotential height data. Alternatively, if only geopotential data is available (instead of geopotential height), the user must use the -g [flag](#flags) and change the [fvars](#namelist options) text file.
 
