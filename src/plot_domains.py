@@ -113,46 +113,7 @@ def plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, outdir,
     else:
         filename = os.path.join(outdir, 'Figures', 'box.png')
     plt.savefig(filename)
-    print(f'\nCreated figure with box defined for computations at {filename}')
-
-
-# def plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, outdir, time=None):
-
-#     plt.close('all')
-#     datacrs = ccrs.PlateCarree() # projection
-#     fig = plt.figure(figsize=(8, 8.5))
-#     ax = fig.add_axes([0.1, 0.1, 0.8, 0.83], projection=datacrs,
-#                   frameon=True)
-#     ax.set_extent([min_lon-20, max_lon+20, max_lat+20, min_lat-20], crs=datacrs)
-#     Brazil_states(ax)
-#     map_features(ax)
-    
-#     # plot selected domain
-#     # create a sample polygon, `pgon`
-#     pgon = Polygon(((min_lon, min_lat),
-#             (min_lon, max_lat),
-#             (max_lon, max_lat),
-#             (max_lon, min_lat),
-#             (min_lon, min_lat)))
-#     ax.add_geometries([pgon], crs=datacrs, 
-#                       facecolor='None', edgecolor='#BF3D3B', linewidth = 3,
-#                       alpha=1, zorder = 3)
-#     gl = ax.gridlines(draw_labels=True,zorder=2)    
-#     gl.xlabel_style = {'size': 16}
-#     gl.ylabel_style = {'size': 16}
-
-#     plt.title('Box defined for compuations \n', fontsize = 22)
-
-#     if time:
-#         check_create_folder(outdir+'Figures/boxes/', verbose=False)
-#         filename = '/boxes/box_{}.png'.format(time)
-#     else:
-#         filename = 'box.png'
-        
-#     plt.savefig(outdir+'Figures/'+filename)
-#     print('\nCreated figure with box defined for computations at '
-#           +outdir+'Figures/'+filename)
-    
+    print(f'\nCreated figure with box defined for computations at {filename}')    
     
 def plot_track(track, FigsDir):
         
