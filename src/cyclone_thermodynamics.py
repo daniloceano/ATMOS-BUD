@@ -45,7 +45,7 @@ import glob
 
 import time
 
-def check_create_folder(DirName):
+def check_create_folder(DirName, verbose=True):
     """
 
     Check if directory exists and if not, creates it.
@@ -64,7 +64,8 @@ def check_create_folder(DirName):
                 os.makedirs(DirName)
                 print(DirName+' created')
     else:
-        print(DirName+' directory exists')
+        if verbose:
+            print(DirName+' directory exists')
  
 def convert_lon(xr,LonIndexer):
     """
@@ -319,6 +320,7 @@ def MovingAnalysis(MovingObj,args):
         
         itime = str(t.values)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
+        datestr2 = pd.to_datetime(itime).strftime('%Y%m%d%H00')
         
         iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
         iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
@@ -352,6 +354,10 @@ def MovingAnalysis(MovingObj,args):
                                   lat, lon, itime)
             min_lon, max_lon = limits['min_lon'],  limits['max_lon']
             min_lat, max_lat = limits['min_lat'],  limits['max_lat']
+        
+        # Save figure with box used for computations
+        plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory,
+                       time=datestr2, zeta=zeta, lat=zeta[LatIndexer], lon=zeta[LonIndexer], hgt=ight_850)
         
         # Store system position and attributes
         central_lat = (limits['max_lat'] + limits['min_lat'])/2
@@ -518,7 +524,8 @@ domain by clicking on the screen.")
  the same as infile)")
     
     args = parser.parse_args()
-    
+    #args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
+
     start_time = time.time()
     
     # Open namelist
