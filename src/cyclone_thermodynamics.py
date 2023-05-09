@@ -524,7 +524,6 @@ domain by clicking on the screen.")
  the same as infile)")
     
     args = parser.parse_args()
-    #args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
