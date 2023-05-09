@@ -1,6 +1,10 @@
 # Results folder
 Results/
 
+# Changes to default inputs
+inputs/track
+inputs/box_limits
+
 # Mac stuff
 .DS_Store
 

@@ -141,8 +141,6 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
     fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection=crs_longlat)
     fig.add_axes(ax)
-    # ax.set_extent([domain_limits['min_lon'], domain_limits['max_lon'],
-    #               domain_limits['min_lat'],domain_limits['max_lat']]) 
     
     plot_zeta(ax, zeta, lat, lon, hgt)
     ax.streamplot(lon.values, lat.values, u.values, v.values, color='#2A1D21',
