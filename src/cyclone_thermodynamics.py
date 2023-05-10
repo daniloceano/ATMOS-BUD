@@ -40,8 +40,7 @@ from plot_domains import plot_fixed_domain
 from plot_domains import plot_track
 from plot_domains import plot_min_zeta_hgt
 
-import glob
-
+import dask
 
 import time
 
@@ -167,8 +166,8 @@ class DataObject:
     Note that: Q = J * Cp_d
     """
     def __init__(self,NetCDF_data: xr.Dataset,
-                 dfVars: pd.DataFrame,
-                 args: argparse.ArgumentParser):
+                 dTdt: xr.DataArray, dZdt: xr.DataArray,
+                 dfVars: pd.DataFrame, args: argparse.ArgumentParser):
         self.LonIndexer = dfVars.loc['Longitude']['Variable']
         self.LatIndexer = dfVars.loc['Latitude']['Variable']
         self.TimeIndexer = dfVars.loc['Time']['Variable']
@@ -214,8 +213,9 @@ with the guys from metpy")
         ## Thermodynamic terms
         self.Theta = theta = potential_temperature(
             self.Pressure,self.Temperature)
-        self.dTdt = self.Temperature.differentiate(
-                self.TimeIndexer,datetime_unit='s') / units('s')
+        # self.dTdt = self.Temperature.differentiate(
+        #         self.TimeIndexer,datetime_unit='s') / units('s')
+        self.dTdt = dTdt
         self.AdvHTemp = self.HorizontalTemperatureAdvection()
         self.AdvVTemp = -1 * (self.Temperature.differentiate(self.LevelIndexer
                     ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
@@ -227,16 +227,17 @@ with the guys from metpy")
         
         ## Vorticity terms
         self.Zeta = vorticity(self.u, self.v)
-        self.dZdt = self.Zeta.differentiate(
-                self.TimeIndexer,datetime_unit='s') / units('s')
+        # self.dZdt = self.Zeta.differentiate(
+        #         self.TimeIndexer,datetime_unit='s') / units('s')
+        self.dZdt = dZdt
         self.AdvHZeta = self.HorizontalVorticityAdvection()
         self.AdvVZeta = -1 * (self.Zeta.differentiate(self.LevelIndexer
                     ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
+        self.Beta = (self.f).differentiate(self.LatIndexer)/self.dy
+        self.vxBeta = -1 * (self.v * self.Beta)
         self.DivH = divergence(self.u, self.v)
         self.fDivH = -1 * self.f * self.DivH
         self.ZetaDivH = -1 * (self.Zeta * self.DivH)
-        self.Beta = (self.f).differentiate(self.LatIndexer)/self.dy
-        self.vxBeta = -1 * (self.v * self.Beta)
         self.Tilting = self.TiltingTerm()
         self.SumVorticity = self.AdvHZeta + self.AdvVZeta + self.vxBeta + \
             self.ZetaDivH + self.fDivH + self.Tilting
@@ -266,7 +267,8 @@ with the guys from metpy")
         return (dOmegady*dudp) - (dOmegadx*dvdp)
     
 
-def MovingAnalysis(MovingObj,args):
+# def MovingAnalysis(MovingObj,args):
+def MovingAnalysis(NetCDF_data, dfVars, dTdt, dZdt, args):
     """
     Parameters
     ----------
@@ -297,14 +299,17 @@ def MovingAnalysis(MovingObj,args):
     # Dictionary to save DataArray results and transform into nc later
     results_nc = {}
     
-    TimeIndexer = MovingObj.TimeIndexer
-    LevelIndexer = MovingObj.LevelIndexer
-    LonIndexer = MovingObj.LonIndexer
-    LatIndexer = MovingObj.LatIndexer
+    # Indexers
+    LonIndexer = dfVars.loc['Longitude']['Variable']
+    LatIndexer = dfVars.loc['Latitude']['Variable']
+    TimeIndexer = dfVars.loc['Time']['Variable']
+    LevelIndexer = dfVars.loc['Vertical Level']['Variable']
     
-    timesteps = MovingObj.NetCDF_data[TimeIndexer]
-    pres_levels = MovingObj.Temperature[MovingObj.LevelIndexer].\
-        metpy.convert_units('hPa').values
+    # timesteps = MovingObj.NetCDF_data[TimeIndexer]
+    # pres_levels = MovingObj.Temperature[MovingObj.LevelIndexer].\
+    #     metpy.convert_units('hPa').values
+    timesteps = NetCDF_data[TimeIndexer]
+    pres_levels = NetCDF_data[LevelIndexer].values
     
     # Create a dictionary for saving area averages of each term
     stored_terms = ['AdvHTemp','AdvVTemp', 'Sigma','Omega','dTdt','ResT', 
@@ -315,6 +320,22 @@ def MovingAnalysis(MovingObj,args):
         dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
         index=[float(i) for i in pres_levels])
         results_nc[term] = []
+
+    if args.fixed:
+        dfbox = pd.read_csv('../inputs/box_limits',header=None,
+                            delimiter=';',index_col=0)
+        WesternLimit = min_lon = float(NetCDF_data[LonIndexer].sel(
+            {LonIndexer:float(dfbox.loc['min_lon'].values)},
+            method='nearest'))
+        EasternLimit = max_lon =float(NetCDF_data[LonIndexer].sel(
+            {LonIndexer:float(dfbox.loc['max_lon'].values)},
+            method='nearest'))
+        SouthernLimit = min_lat =float(NetCDF_data[LatIndexer].sel(
+            {LatIndexer:float(dfbox.loc['min_lat'].values)},
+            method='nearest'))
+        NorthernLimit = max_lat =float(NetCDF_data[LatIndexer].sel(
+            {LatIndexer:float(dfbox.loc['max_lat'].values)},
+            method='nearest'))
     
     for t in timesteps:
         
@@ -322,19 +343,30 @@ def MovingAnalysis(MovingObj,args):
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         datestr2 = pd.to_datetime(itime).strftime('%Y%m%d%H00')
         
-        iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
-        iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
-        ight_850 = MovingObj.GeopotHeight.sel({TimeIndexer:t}
-                                               ).sel({LevelIndexer:850})
-        zeta = vorticity(iu_850, iv_850).metpy.dequantify()
+        MovingObj = DataObject(NetCDF_data.sel({TimeIndexer:t}), dTdt=dTdt.sel({TimeIndexer:t}),
+                                 dZdt=dZdt.sel({TimeIndexer:t}), dfVars=dfVars, args=args)
+
+        # iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
+        # iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
+        # ight_850 = MovingObj.GeopotHeight.sel({TimeIndexer:t}
+        #                                        ).sel({LevelIndexer:850})
+        iu_850 = MovingObj.u.sel({LevelIndexer:850})
+        iv_850 = MovingObj.v.sel({LevelIndexer:850})
+        ight_850 = MovingObj.GeopotHeight.sel({LevelIndexer:850})
+        
+        # Filter doesn't work well with metpy units
+        # zeta = vorticity(iu_850, iv_850).metpy.dequantify()
+        zeta = MovingObj.Zeta.sel({LevelIndexer:850}).metpy.dequantify()
         # Apply filter when using high resolution gridded data
-        dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
+        # dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
+        dx = float(NetCDF_data[LonIndexer][1]-NetCDF_data[LonIndexer][0])
         if dx < 1:
             zeta = zeta.to_dataset(name='vorticity'
                 ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
             
-        lat, lon = iu_850[MovingObj.LatIndexer], iu_850[MovingObj.LonIndexer]
-        
+        # lat, lon = iu_850[MovingObj.LatIndexer], iu_850[MovingObj.LonIndexer]
+        lat, lon = NetCDF_data[MovingObj.LatIndexer], NetCDF_data[MovingObj.LonIndexer]
+
         if args.track:
             # Get current time and box limits
             if 'width'in track.columns:
@@ -347,7 +379,7 @@ def MovingAnalysis(MovingObj,args):
             max_lat = track.loc[itime]['Lat']+(length/2)
             limits = {'min_lon':min_lon,'max_lon':max_lon,
                       'min_lat':min_lat,'max_lat':max_lat}
-        
+            
         elif args.choose:
             # Draw maps and ask user to specify corners for specifying the box
             limits = draw_box_map(iu_850, iv_850, zeta, ight_850,
@@ -359,43 +391,59 @@ def MovingAnalysis(MovingObj,args):
         plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory,
                        time=datestr2, zeta=zeta, lat=zeta[LatIndexer], lon=zeta[LonIndexer], hgt=ight_850)
         
-        # Store system position and attributes
-        central_lat = (limits['max_lat'] + limits['min_lat'])/2
-        central_lon = (limits['max_lon'] + limits['min_lon'])/2
-        length = limits['max_lat'] - limits['min_lat']
-        width = limits['max_lon'] - limits['min_lon']
-        min_zeta = float(zeta.min())
-        min_hgt = float(ight_850.min())
-        max_wind = float(wind_speed(iu_850, iv_850).max())
+        if args.fixed:
+            print("Storing results for: "+datestr)
+
+        else:
+            # Store system position and attributes
+            central_lat = (limits['max_lat'] + limits['min_lat'])/2
+            central_lon = (limits['max_lon'] + limits['min_lon'])/2
+            length = limits['max_lat'] - limits['min_lat']
+            width = limits['max_lon'] - limits['min_lon']
+            min_zeta = float(zeta.min())
+            min_hgt = float(ight_850.min())
+            max_wind = float(wind_speed(iu_850, iv_850).max())
         
-        values = [datestr, central_lat, central_lon, length, width,
+            values = [datestr, central_lat, central_lon, length, width,
                   min_zeta, min_hgt, max_wind]
-        for key,val in zip(results_keys,values):
-            position[key].append(val)
+            for key,val in zip(results_keys,values):
+                position[key].append(val)
             
-        print('\nTime: ',datestr)
-        print('Box min_lon, max_lon: '+str(min_lon)+'/'+str(max_lon))
-        print('Box min_lat, max_lat: '+str(min_lat)+'/'+str(max_lat))
-        print('Box size (longitude): '+str(width))
-        print('Box size (latitude): '+str(length))
-        print('Minimum vorticity at 850 hPa:',min_zeta)
-        print('Minimum geopotential height at 850 hPa:',min_hgt)
-        print('Maximum wind speed at 850 hPa:',max_wind)
-        
-        NetCDF_data = MovingObj.NetCDF_data
-        # Get closest grid point to actual track
-        WesternLimit = float(NetCDF_data[MovingObj.LonIndexer].sel(
-            {MovingObj.LonIndexer:min_lon}, method='nearest'))
-        EasternLimit =float( NetCDF_data[MovingObj.LonIndexer].sel(
-            {MovingObj.LonIndexer:max_lon}, method='nearest'))
-        SouthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
-            {MovingObj.LatIndexer:min_lat}, method='nearest'))
-        NorthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
-            {MovingObj.LatIndexer:max_lat}, method='nearest'))
+            print('\nTime: ',datestr)
+            print('Box min_lon, max_lon: '+str(min_lon)+'/'+str(max_lon))
+            print('Box min_lat, max_lat: '+str(min_lat)+'/'+str(max_lat))
+            print('Box size (longitude): '+str(width))
+            print('Box size (latitude): '+str(length))
+            print('Minimum vorticity at 850 hPa:',min_zeta)
+            print('Minimum geopotential height at 850 hPa:',min_hgt)
+            print('Maximum wind speed at 850 hPa:',max_wind)
+            
+            # NetCDF_data = MovingObj.NetCDF_data
+            # Get closest grid point to actual track
+            # WesternLimit = float(NetCDF_data[MovingObj.LonIndexer].sel(
+            #     {MovingObj.LonIndexer:min_lon}, method='nearest'))
+            # EasternLimit =float( NetCDF_data[MovingObj.LonIndexer].sel(
+            #     {MovingObj.LonIndexer:max_lon}, method='nearest'))
+            # SouthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
+            #     {MovingObj.LatIndexer:min_lat}, method='nearest'))
+            # NorthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
+            #     {MovingObj.LatIndexer:max_lat}, method='nearest'))
+            WesternLimit = float(NetCDF_data[LonIndexer].sel(
+                {LonIndexer:min_lon}, method='nearest'))
+            EasternLimit =float(NetCDF_data[LonIndexer].sel(
+                {LonIndexer:max_lon}, method='nearest'))
+            SouthernLimit = float(NetCDF_data[LatIndexer].sel(
+                {MovingObj.LatIndexer:min_lat}, method='nearest'))
+            NorthernLimit = float(NetCDF_data[LatIndexer].sel(
+                {LatIndexer:max_lat}, method='nearest'))
         
         for term in stored_terms:
-            term_sliced = getattr(MovingObj,term).sel({MovingObj.TimeIndexer:t}
-                                ).sel(**{MovingObj.LatIndexer:slice(
+            # term_sliced = getattr(MovingObj,term).sel({MovingObj.TimeIndexer:t}
+            #                     ).sel(**{MovingObj.LatIndexer:slice(
+            #                     SouthernLimit,NorthernLimit),
+            #                     MovingObj.LonIndexer: slice(
+            #                             WesternLimit,EasternLimit)})
+            term_sliced = getattr(MovingObj,term).sel(**{MovingObj.LatIndexer:slice(
                                 SouthernLimit,NorthernLimit),
                                 MovingObj.LonIndexer: slice(
                                         WesternLimit,EasternLimit)})
@@ -423,13 +471,15 @@ def MovingAnalysis(MovingObj,args):
         dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
         
     # Save system position as a csv file for replicability
-    track = pd.DataFrame.from_dict(position)
-    track = track.rename(columns={'central_lat':'Lat','central_lon':'Lon'})
-    track.to_csv(ResultsSubDirectory+outfile_name+'_track',
-                 index=False, sep=";")
+    if not args.fixed:
 
-    plot_track(track, FigsDirectory)
-    plot_min_zeta_hgt(track, FigsDirectory)                          
+        track = pd.DataFrame.from_dict(position)
+        track = track.rename(columns={'central_lat':'Lat','central_lon':'Lon'})
+        track.to_csv(ResultsSubDirectory+outfile_name+'_track',
+                    index=False, sep=";")
+
+        plot_track(track, FigsDirectory)
+        plot_min_zeta_hgt(track, FigsDirectory)                          
 
     
 def FixedAnalysis(FixedObj):
@@ -524,6 +574,7 @@ domain by clicking on the screen.")
  the same as infile)")
     
     args = parser.parse_args()
+    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
@@ -537,47 +588,47 @@ domain by clicking on the screen.")
     TimeIndexer = dfVars.loc['Time']['Variable']
     LevelIndexer = dfVars.loc['Vertical Level']['Variable']
     
-    # Open file
-    infile  = args.infile
-    print('Opening file: '+infile)
-    if args.gfs:
-        NetCDF_data = convert_lon(xr.open_mfdataset(infile, 
-                    engine='cfgrib', parallel=True,
-                    filter_by_keys={'typeOfLevel': 'isobaricInhPa'}, 
-                    combine='nested', concat_dim=TimeIndexer),
-                              dfVars.loc['Longitude']['Variable'])
+    # # Open file
+    # infile  = args.infile
+    # print('Opening file: '+infile)
+    # if args.gfs:
+    #     NetCDF_data = convert_lon(xr.open_mfdataset(infile, 
+    #                 engine='cfgrib', parallel=True,
+    #                 filter_by_keys={'typeOfLevel': 'isobaricInhPa'}, 
+    #                 combine='nested', concat_dim=TimeIndexer),
+    #                           dfVars.loc['Longitude']['Variable'])
         
-    else:
-        NetCDF_data = convert_lon(xr.open_dataset(infile),
-                              dfVars.loc['Longitude']['Variable'])
+    # else:
+    #     NetCDF_data = convert_lon(xr.open_dataset(infile),
+    #                           dfVars.loc['Longitude']['Variable'])
 
-    # # Steps for optimization:
+    # Steps for optimization:
     #  1) Compute dTdt before everything because it's the only term with temporal dependency
     #  2) Instead of creating the Object in the beginning, create it for each time step,
     #     using the NetCDF data sliced for each timestep
     #   
-    # # Open file
-    # infile = args.infile
-    # print('Opening file: ' + infile)
-    # if args.gfs:
-    #     with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
-    #         NetCDF_data = convert_lon(
-    #             xr.open_mfdataset(
-    #                 infile,
-    #                 engine='cfgrib',
-    #                 parallel=True,
-    #                 filter_by_keys={'typeOfLevel': 'isobaricInhPa'},
-    #                 combine='nested',
-    #                 concat_dim=TimeIndexer
-    #             ),
-    #             dfVars.loc['Longitude']['Variable']
-    #         )
-    # else:
-    #     with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
-    #         NetCDF_data = convert_lon(
-    #             xr.open_dataset(infile),
-    #             dfVars.loc['Longitude']['Variable']
-    #         )
+    # Open file
+    infile = args.infile
+    print('Opening file: ' + infile)
+    if args.gfs:
+        with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
+            NetCDF_data = convert_lon(
+                xr.open_mfdataset(
+                    infile,
+                    engine='cfgrib',
+                    parallel=True,
+                    filter_by_keys={'typeOfLevel': 'isobaricInhPa'},
+                    combine='nested',
+                    concat_dim=TimeIndexer
+                ),
+                dfVars.loc['Longitude']['Variable']
+            )
+    else:
+        with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
+            NetCDF_data = convert_lon(
+                xr.open_dataset(infile),
+                dfVars.loc['Longitude']['Variable']
+            )
         
     print('Done.\nNow, running pre-processing stages...')
     # Sort data coordinates as data from distinc sources might have different
@@ -594,6 +645,15 @@ domain by clicking on the screen.")
         {"coslats": np.cos(np.deg2rad(NetCDF_data[LatIndexer]))})
     NetCDF_data = NetCDF_data.assign_coords(
         {"rlons": np.deg2rad(NetCDF_data[LonIndexer])})
+    print('Done.')
+
+    # Computeterms with temporal dependency
+    print('Computing zeta and temperature tendencies...')
+    dTdt =  NetCDF_data[dfVars.loc['Air Temperature']['Variable']].differentiate(
+                TimeIndexer,datetime_unit='s') * units('K/s')
+    Zeta = vorticity(NetCDF_data[dfVars.loc['Eastward Wind Component']['Variable']],
+                                  NetCDF_data[dfVars.loc['Northward Wind Component']['Variable']])          
+    dZdt = Zeta.differentiate(TimeIndexer, datetime_unit='s') / units('s')
     print('Done.')
     
     # Directory where results will be stored
@@ -617,17 +677,23 @@ domain by clicking on the screen.")
         os.system('cp ../inputs/box_limits '+ResultsSubDirectory)
     elif args.track:
         os.system('cp ../inputs/track '+ResultsSubDirectory)
-    
-    # Run the program
-    if args.fixed:
-        print('Running Fixed framework.')
-        FixedObj = DataObject(NetCDF_data,dfVars, args)
-        FixedAnalysis(FixedObj)
-        print("--- %s seconds running Fixed framework ---" % (
+
+     # Run the program
+    MovingAnalysis(NetCDF_data,dfVars, dTdt, dZdt, args)
+    print("--- %s seconds for running the program ---" % (
             time.time() - start_time))
-    if args.track or args.choose:
-        print('Running Moving framework.')
-        MovingObj = DataObject(NetCDF_data,dfVars, args)
-        MovingAnalysis(MovingObj,args)
-        print("--- %s seconds for running Moving framework ---" % (
-            time.time() - start_time))            
+
+    # # Run the program
+    # if args.fixed:
+    #     print('Running Fixed framework.')
+    #     # FixedObj = DataObject(NetCDF_data,dfVars, args)
+    #     # FixedAnalysis(FixedObj)
+    #     MovingAnalysis(NetCDF_data,dfVars, dTdt, dZdt, args)
+    #     print("--- %s seconds running Fixed framework ---" % (
+    #         time.time() - start_time))
+    # if args.track or args.choose:
+    #     print('Running Moving framework.')
+    #     MovingObj = DataObject(NetCDF_data,dfVars, args)
+    #     MovingAnalysis(MovingObj,args)
+    #     print("--- %s seconds for running Moving framework ---" % (
+    #         time.time() - start_time))            
