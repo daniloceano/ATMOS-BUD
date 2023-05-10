@@ -550,6 +550,34 @@ domain by clicking on the screen.")
     else:
         NetCDF_data = convert_lon(xr.open_dataset(infile),
                               dfVars.loc['Longitude']['Variable'])
+
+    # # Steps for optimization:
+    #  1) Compute dTdt before everything because it's the only term with temporal dependency
+    #  2) Instead of creating the Object in the beginning, create it for each time step,
+    #     using the NetCDF data sliced for each timestep
+    #   
+    # # Open file
+    # infile = args.infile
+    # print('Opening file: ' + infile)
+    # if args.gfs:
+    #     with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
+    #         NetCDF_data = convert_lon(
+    #             xr.open_mfdataset(
+    #                 infile,
+    #                 engine='cfgrib',
+    #                 parallel=True,
+    #                 filter_by_keys={'typeOfLevel': 'isobaricInhPa'},
+    #                 combine='nested',
+    #                 concat_dim=TimeIndexer
+    #             ),
+    #             dfVars.loc['Longitude']['Variable']
+    #         )
+    # else:
+    #     with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
+    #         NetCDF_data = convert_lon(
+    #             xr.open_dataset(infile),
+    #             dfVars.loc['Longitude']['Variable']
+    #         )
         
     print('Done.\nNow, running pre-processing stages...')
     # Sort data coordinates as data from distinc sources might have different
