@@ -267,8 +267,7 @@ with the guys from metpy")
         return (dOmegady*dudp) - (dOmegadx*dvdp)
     
 
-# def MovingAnalysis(MovingObj,args):
-def MovingAnalysis(NetCDF_data, dfVars, dTdt, dZdt, args):
+def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
     """
     Parameters
     ----------
@@ -574,7 +573,6 @@ domain by clicking on the screen.")
  the same as infile)")
     
     args = parser.parse_args()
-    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
@@ -588,25 +586,6 @@ domain by clicking on the screen.")
     TimeIndexer = dfVars.loc['Time']['Variable']
     LevelIndexer = dfVars.loc['Vertical Level']['Variable']
     
-    # # Open file
-    # infile  = args.infile
-    # print('Opening file: '+infile)
-    # if args.gfs:
-    #     NetCDF_data = convert_lon(xr.open_mfdataset(infile, 
-    #                 engine='cfgrib', parallel=True,
-    #                 filter_by_keys={'typeOfLevel': 'isobaricInhPa'}, 
-    #                 combine='nested', concat_dim=TimeIndexer),
-    #                           dfVars.loc['Longitude']['Variable'])
-        
-    # else:
-    #     NetCDF_data = convert_lon(xr.open_dataset(infile),
-    #                           dfVars.loc['Longitude']['Variable'])
-
-    # Steps for optimization:
-    #  1) Compute dTdt before everything because it's the only term with temporal dependency
-    #  2) Instead of creating the Object in the beginning, create it for each time step,
-    #     using the NetCDF data sliced for each timestep
-    #   
     # Open file
     infile = args.infile
     print('Opening file: ' + infile)
@@ -679,21 +658,6 @@ domain by clicking on the screen.")
         os.system('cp ../inputs/track '+ResultsSubDirectory)
 
      # Run the program
-    MovingAnalysis(NetCDF_data,dfVars, dTdt, dZdt, args)
+    cyclone_thermodynamics(NetCDF_data,dfVars, dTdt, dZdt, args)
     print("--- %s seconds for running the program ---" % (
             time.time() - start_time))
-
-    # # Run the program
-    # if args.fixed:
-    #     print('Running Fixed framework.')
-    #     # FixedObj = DataObject(NetCDF_data,dfVars, args)
-    #     # FixedAnalysis(FixedObj)
-    #     MovingAnalysis(NetCDF_data,dfVars, dTdt, dZdt, args)
-    #     print("--- %s seconds running Fixed framework ---" % (
-    #         time.time() - start_time))
-    # if args.track or args.choose:
-    #     print('Running Moving framework.')
-    #     MovingObj = DataObject(NetCDF_data,dfVars, args)
-    #     MovingAnalysis(MovingObj,args)
-    #     print("--- %s seconds for running Moving framework ---" % (
-    #         time.time() - start_time))            
