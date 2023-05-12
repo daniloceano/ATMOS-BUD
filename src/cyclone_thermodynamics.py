@@ -303,10 +303,7 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
     LatIndexer = dfVars.loc['Latitude']['Variable']
     TimeIndexer = dfVars.loc['Time']['Variable']
     LevelIndexer = dfVars.loc['Vertical Level']['Variable']
-    
-    # timesteps = MovingObj.NetCDF_data[TimeIndexer]
-    # pres_levels = MovingObj.Temperature[MovingObj.LevelIndexer].\
-    #     metpy.convert_units('hPa').values
+
     timesteps = NetCDF_data[TimeIndexer]
     pres_levels = NetCDF_data[LevelIndexer].values
     
@@ -345,25 +342,16 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
         MovingObj = DataObject(NetCDF_data.sel({TimeIndexer:t}), dTdt=dTdt.sel({TimeIndexer:t}),
                                  dZdt=dZdt.sel({TimeIndexer:t}), dfVars=dfVars, args=args)
 
-        # iu_850 = MovingObj.u.sel({TimeIndexer:t}).sel({LevelIndexer:850})
-        # iv_850 = MovingObj.v.sel({TimeIndexer:t}).sel({LevelIndexer:850})
-        # ight_850 = MovingObj.GeopotHeight.sel({TimeIndexer:t}
-        #                                        ).sel({LevelIndexer:850})
         iu_850 = MovingObj.u.sel({LevelIndexer:850})
         iv_850 = MovingObj.v.sel({LevelIndexer:850})
         ight_850 = MovingObj.GeopotHeight.sel({LevelIndexer:850})
         
-        # Filter doesn't work well with metpy units
-        # zeta = vorticity(iu_850, iv_850).metpy.dequantify()
         zeta = MovingObj.Zeta.sel({LevelIndexer:850}).metpy.dequantify()
-        # Apply filter when using high resolution gridded data
-        # dx = float(iv_850[LonIndexer][1]-iv_850[LonIndexer][0])
         dx = float(NetCDF_data[LonIndexer][1]-NetCDF_data[LonIndexer][0])
         if dx < 1:
             zeta = zeta.to_dataset(name='vorticity'
                 ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
             
-        # lat, lon = iu_850[MovingObj.LatIndexer], iu_850[MovingObj.LonIndexer]
         lat, lon = NetCDF_data[MovingObj.LatIndexer], NetCDF_data[MovingObj.LonIndexer]
 
         if args.track:
@@ -417,16 +405,6 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
             print('Minimum geopotential height at 850 hPa:',min_hgt)
             print('Maximum wind speed at 850 hPa:',max_wind)
             
-            # NetCDF_data = MovingObj.NetCDF_data
-            # Get closest grid point to actual track
-            # WesternLimit = float(NetCDF_data[MovingObj.LonIndexer].sel(
-            #     {MovingObj.LonIndexer:min_lon}, method='nearest'))
-            # EasternLimit =float( NetCDF_data[MovingObj.LonIndexer].sel(
-            #     {MovingObj.LonIndexer:max_lon}, method='nearest'))
-            # SouthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
-            #     {MovingObj.LatIndexer:min_lat}, method='nearest'))
-            # NorthernLimit = float(NetCDF_data[MovingObj.LatIndexer].sel(
-            #     {MovingObj.LatIndexer:max_lat}, method='nearest'))
             WesternLimit = float(NetCDF_data[LonIndexer].sel(
                 {LonIndexer:min_lon}, method='nearest'))
             EasternLimit =float(NetCDF_data[LonIndexer].sel(
@@ -437,11 +415,6 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
                 {LatIndexer:max_lat}, method='nearest'))
         
         for term in stored_terms:
-            # term_sliced = getattr(MovingObj,term).sel({MovingObj.TimeIndexer:t}
-            #                     ).sel(**{MovingObj.LatIndexer:slice(
-            #                     SouthernLimit,NorthernLimit),
-            #                     MovingObj.LonIndexer: slice(
-            #                             WesternLimit,EasternLimit)})
             term_sliced = getattr(MovingObj,term).sel(**{MovingObj.LatIndexer:slice(
                                 SouthernLimit,NorthernLimit),
                                 MovingObj.LonIndexer: slice(
