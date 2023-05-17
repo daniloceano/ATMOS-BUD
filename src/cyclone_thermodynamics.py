@@ -88,6 +88,40 @@ def convert_lon(xr,LonIndexer):
     xr = xr.sortby(xr[LonIndexer])
     return xr
 
+def find_extremum_coordinates(data, lat, lon, variable):
+    """
+    Finds the indices of the extremum values for a given variable.
+
+    Args:
+    data: An xarray DataArray containing the data to compute the energy cycle.
+    lat: An xarray DataArray containing the latitudes of the data.
+    lon: An xarray DataArray containing the longitudes of the data.
+    variable: A string containing the name of the variable to find the indices for.
+
+    Returns:
+    A tuple containing the indices of the extremum values for the specified variable.
+    """
+    
+    lat_values = lat.values
+    lon_values = lon.values
+
+    if variable == 'min_zeta':
+        index = np.unravel_index(data.argmin(), data.shape)
+    elif variable == 'min_hgt':
+        index = np.unravel_index(data.argmin(), data.shape)
+    elif variable == 'max_wind':
+        index = np.unravel_index(data.argmax(), data.shape)
+    else:
+        raise ValueError("Invalid variable specified.")
+
+    lat_index = index[0]
+    lon_index = index[1]
+
+    lat_value = lat_values[lat_index]
+    lon_value = lon_values[lon_index]
+
+    return lat_value, lon_value
+
 def slice_domain(NetCDF_data, args, dfVars):
     
     # Data indexers
@@ -345,6 +379,7 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
         iu_850 = MovingObj.u.sel({LevelIndexer:850})
         iv_850 = MovingObj.v.sel({LevelIndexer:850})
         ight_850 = MovingObj.GeopotHeight.sel({LevelIndexer:850})
+        iwspd_850 = wind_speed(iu_850, iv_850)
         
         zeta = MovingObj.Zeta.sel({LevelIndexer:850}).metpy.dequantify()
         dx = float(NetCDF_data[LonIndexer][1]-NetCDF_data[LonIndexer][0])
@@ -360,24 +395,87 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
                 width, length = track.loc[itime]['width'],track.loc[itime]['length']
             else:
                 width, length = 15, 15
-            min_lon = track.loc[itime]['Lon']-(width/2)
-            max_lon = track.loc[itime]['Lon']+(width/2)
-            min_lat = track.loc[itime]['Lat']-(length/2)
-            max_lat = track.loc[itime]['Lat']+(length/2)
+            central_lon = track.loc[itime]['Lon']
+            central_lat = track.loc[itime]['Lat']
+            min_lon = central_lon-(width/2)
+            max_lon = central_lon+(width/2)
+            min_lat = central_lat-(length/2)
+            max_lat = central_lat+(length/2)
             limits = {'min_lon':min_lon,'max_lon':max_lon,
-                      'min_lat':min_lat,'max_lat':max_lat}
+                      'min_lat':min_lat,'max_lat':max_lat,
+                      'central_lat':central_lat,'central_lon':central_lon}
             
         elif args.choose:
             # Draw maps and ask user to specify corners for specifying the box
             limits = draw_box_map(iu_850, iv_850, zeta, ight_850,
                                   lat, lon, itime)
+            # Store system position and attributes
             min_lon, max_lon = limits['min_lon'],  limits['max_lon']
             min_lat, max_lat = limits['min_lat'],  limits['max_lat']
+            width, length = limits['max_lon'] - limits['min_lon'], limits['max_lat'] - limits['min_lat']
+            central_lat = (limits['max_lat'] + limits['min_lat'])/2
+            central_lon = (limits['max_lon'] + limits['min_lon'])/2
+            limits['central_lat'], limits['central_lon'] = central_lat, central_lon
+
+        elif args.fixed:
+            limits = {'min_lon': min_lon, 'max_lon': max_lon, 'min_lat': min_lat, 'max_lat': max_lat,
+                      'central_lat': (max_lat+min_lat)/2, 'central_lon': (max_lon+min_lon)/2}
+            
+        # Slice data for defined box
+        izeta_850_slice = zeta.sel({LatIndexer:slice(min_lat, max_lat), LonIndexer:slice(min_lon, max_lon)})
+        ight_850_slice = ight_850.sel({LatIndexer:slice(min_lat, max_lat), LonIndexer:slice(min_lon, max_lon)})
+        iwspd_850_slice = iwspd_850.sel({LatIndexer:slice(min_lat, max_lat), LonIndexer:slice(min_lon, max_lon)})
+
+        if args.track:
+            # Check if 'min_zeta_850', 'min_hgt_850' and 'max_wind_850' columns exists in the track file.
+            # If they exist, then retrieve and convert the value from the track file.  
+            # If they do not exist, calculate them.
+            try:
+                min_zeta = float(track.loc[itime]['min_zeta_850'])
+            except KeyError:
+                min_zeta = float(izeta_850_slice.min())
+            try:
+                min_hgt = float(track.loc[itime]['min_hgt_850'])
+            except KeyError:
+                min_hgt = float(ight_850_slice.min())
+            try:
+                max_wind = float(track.loc[itime]['max_wind_850'])
+            except KeyError:
+                max_wind = float(iwspd_850_slice.max())
         
-        # Save figure with box used for computations
-        plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory,
-                       time=datestr2, zeta=zeta, lat=zeta[LatIndexer], lon=zeta[LonIndexer], hgt=ight_850)
-        
+        else:
+            min_zeta = float(izeta_850_slice.min())
+            min_hgt = float(ight_850_slice.min())
+            max_wind = float(iwspd_850_slice.max())
+
+        # Find position of the extremes
+        lat_slice, lon_slice = izeta_850_slice[LatIndexer], izeta_850_slice[LonIndexer]
+        min_zeta_lat, min_zeta_lon = find_extremum_coordinates(izeta_850_slice, lat_slice, lon_slice, 'min_zeta')
+        min_hgt_lat, min_hgt_lon = find_extremum_coordinates(ight_850_slice, lat_slice, lon_slice, 'min_hgt')
+        max_wind_lat, max_wind_lon = find_extremum_coordinates(iwspd_850_slice, lat_slice, lon_slice, 'max_wind')
+       
+        # Store the results in a dictionary for plotting purposes
+        data850 = {
+            'min_zeta': {
+                'latitude': min_zeta_lat,
+                'longitude': min_zeta_lon,
+                'data': zeta
+            },
+            'min_hgt': {
+                'latitude': min_hgt_lat,
+                'longitude': min_hgt_lon,
+                'data': ight_850
+            },
+            'max_wind': {
+                'latitude': max_wind_lat,
+                'longitude': max_wind_lon,
+                'data': iwspd_850
+            },
+            'lat': lat,
+            'lon': lon,
+        }
+
+        # Print results on screen
         if args.fixed:
             print("Storing results for: "+datestr)
 
@@ -421,6 +519,9 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
                                         WesternLimit,EasternLimit)})
             dfDict[term][itime] = CalcAreaAverage(term_sliced,
                                 ZonalAverage=True)
+            
+        # Save figure with box used for computations
+        plot_fixed_domain(limits, data850, ResultsSubDirectory, datestr2)
     
     print('saving results to nc file...')
     term_results = []
@@ -451,64 +552,7 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
                     index=False, sep=";")
 
         plot_track(track, FigsDirectory)
-        plot_min_zeta_hgt(track, FigsDirectory)                          
-
-    
-def FixedAnalysis(FixedObj):
-    
-    timesteps = FixedObj.NetCDF_data[FixedObj.TimeIndexer]
-    
-    pres_levels = FixedObj.Temperature[FixedObj.LevelIndexer].\
-        metpy.convert_units('hPa').values
-        
-    stored_terms = ['AdvHTemp','Sigma', 'Omega','dTdt','ResT', 
-                   'Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
-                  'ZetaDivH','fDivH', 'Tilting', 'ResZ'] 
-    
-    # Dictionary to save DataArray results and transform into nc later
-    results_nc = {}
-    
-    dfDict = {}
-    for term in stored_terms:
-        dfDict[term] = pd.DataFrame(columns=[str(t.values) for t in timesteps],
-        index=[float(i) for i in pres_levels])
-        results_nc[term] = []
-        
-    for t in timesteps:
-        # Get current time and time strings
-        itime = str(t.values)
-        datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
-        print("Storing results for: "+datestr)
-                
-        for term in stored_terms:
-            term_sliced = getattr(FixedObj,term).sel({FixedObj.TimeIndexer:t})
-            dfDict[term][itime] = CalcAreaAverage(term_sliced,
-                                ZonalAverage=True)
-
-    print('saving results to nc file...')
-    term_results = []
-    for term in stored_terms:
-        term_results.append(getattr(FixedObj,term))
-        
-    results_nc = []
-    for term, da in zip(stored_terms,term_results):
-        da =  da.metpy.dequantify()
-        da.name = term
-        results_nc.append(da)
-    out_nc = xr.merge(results_nc)
-    fname = ResultsSubDirectory+ outfile_name+'.nc'
-    out_nc.to_netcdf(fname, mode='w',engine="netcdf4")
-    print(fname+' created')
-                                                 
-    # Save CSV files with all the terms stored above
-    for term in stored_terms:
-        dfDict[term].to_csv(ResultsSubDirectory+term+'.csv')
-        
-    min_lon = FixedObj.NetCDF_data[FixedObj.LonIndexer].min()
-    max_lon = FixedObj.NetCDF_data[FixedObj.LonIndexer].max()
-    min_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].min()
-    max_lat = FixedObj.NetCDF_data[FixedObj.LatIndexer].max()
-    plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, ResultsSubDirectory) 
+        plot_min_zeta_hgt(track, FigsDirectory)
                           
     
 if __name__ == "__main__":
@@ -546,6 +590,7 @@ domain by clicking on the screen.")
  the same as infile)")
     
     args = parser.parse_args()
+    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
