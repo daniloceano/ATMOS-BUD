@@ -68,8 +68,13 @@ def Brazil_states(ax, facecolor='#a4ab98'):
                                   name='populated_places')
     _ = ax.add_feature(cities, edgecolor='#283618',linewidth=1)
 
-def plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, outdir,
-                       time=None, zeta=None, lat=None, lon=None, hgt=None):
+def plot_fixed_domain(limits, data850, ResultsSubDirectory, time):
+
+    # Central coordinates
+    max_lon, min_lon = limits['max_lon'], limits['min_lon']
+    max_lat, min_lat = limits['max_lat'], limits['min_lat']
+    central_lon = (max_lon+min_lon)/2
+    central_lat = (max_lat+min_lat)/2
 
     # Create figure
     plt.close('all')
@@ -99,19 +104,28 @@ def plot_fixed_domain(min_lon, max_lon, min_lat, max_lat, outdir,
     # Add title
     plt.title('Box defined for computations\n', fontsize=22)
 
-    # Plot zeta data if requested
-    if zeta is not None and lat is not None and lon is not None:
-        plot_zeta(ax, zeta, lat, lon, hgt)
-        map_features(ax)
-        Brazil_states(ax, facecolor='None')
+    # Plot central point, mininum vorticity, minimum hgt and maximum wind 
+    plot_zeta(ax, data850['min_zeta']['data'], data850['lat'], data850['lon'], data850['min_hgt']['data'])
+    map_features(ax)
+    Brazil_states(ax, facecolor='None')
+
+    # Plot central point, mininum vorticity, minimum hgt and maximum wind
+    ax.scatter(central_lon, central_lat,  marker='o', c='#31332e', s=100, zorder=4)
+    ax.scatter(data850['min_zeta']['longitude'], data850['min_zeta']['latitude'],
+                marker='s', c='#31332e', s=100, zorder=4, label='min zeta')
+    ax.scatter(data850['min_hgt']['longitude'], data850['min_hgt']['latitude'],
+                marker='x', c='#31332e', s=100, zorder=4, label='min hgt')
+    ax.scatter(data850['max_wind']['longitude'], data850['max_wind']['latitude'],
+                marker='^', c='#31332e', s=100, zorder=4, label='max wind')
+    plt.legend(loc='upper left', frameon=True, fontsize=14, bbox_to_anchor=(1.1,1.2))
 
     # Save figure
     if time:
-        boxes_directory = os.path.join(outdir, 'Figures', 'boxes')
+        boxes_directory = os.path.join(ResultsSubDirectory, 'Figures', 'boxes')
         check_create_folder(boxes_directory, verbose=False)
         filename = os.path.join(boxes_directory, f'box_{time}.png')
     else:
-        filename = os.path.join(outdir, 'Figures', 'box.png')
+        filename = os.path.join(ResultsSubDirectory, 'Figures', 'box.png')
     plt.savefig(filename)
     print(f'\nCreated figure with box defined for computations at {filename}')    
     
