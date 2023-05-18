@@ -63,7 +63,7 @@ def plot_zeta(ax, zeta, lat, lon, hgt=None):
     # plot contours
     cf1 = ax.contourf(lon, lat, zeta, cmap=cmap,norm=norm,levels=51,
                       transform=crs_longlat) 
-    plt.colorbar(cf1, pad=0.07, orientation='vertical', shrink=0.5, format=ticker.FuncFormatter(fmt))
+    plt.colorbar(cf1, pad=0.1, orientation='vertical', shrink=0.5, format=ticker.FuncFormatter(fmt))
     if hgt is not None:
         cs = ax.contour(lon, lat, hgt, levels=11, colors='#747578', 
                         linestyles='dashed',linewidths=1,transform=crs_longlat)
