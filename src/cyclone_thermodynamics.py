@@ -247,22 +247,18 @@ with the guys from metpy")
         ## Thermodynamic terms
         self.Theta = theta = potential_temperature(
             self.Pressure,self.Temperature)
-        # self.dTdt = self.Temperature.differentiate(
-        #         self.TimeIndexer,datetime_unit='s') / units('s')
         self.dTdt = dTdt
         self.AdvHTemp = self.HorizontalTemperatureAdvection()
         self.AdvVTemp = -1 * (self.Temperature.differentiate(self.LevelIndexer
                     ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
-        self.Sigma = (-1 * (self.Temperature/theta) * theta.differentiate(
-            self.LevelIndexer) / units(str(self.Pressure.metpy.units))
+        self.Sigma = (-1 * (self.Temperature/theta) * (theta.differentiate(
+            self.LevelIndexer) / units(str(theta[LevelIndexer].metpy.units)))
             ).metpy.convert_units('K / Pa')
         self.ResT =  self.dTdt - self.AdvHTemp - (self.Sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
         
         ## Vorticity terms
         self.Zeta = vorticity(self.u, self.v)
-        # self.dZdt = self.Zeta.differentiate(
-        #         self.TimeIndexer,datetime_unit='s') / units('s')
         self.dZdt = dZdt
         self.AdvHZeta = self.HorizontalVorticityAdvection()
         self.AdvVZeta = -1 * (self.Zeta.differentiate(self.LevelIndexer
@@ -589,8 +585,10 @@ domain by clicking on the screen.")
     help = "choose a name for saving results (default is\
  the same as infile)")
     
-    args = parser.parse_args()
-    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
+    #args = parser.parse_args()
+
+    # For debuging:
+    args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
