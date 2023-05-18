@@ -20,6 +20,7 @@ import time
 from shapely.geometry.polygon import Polygon
 import matplotlib.colors as colors
 import cmocean.cm as cmo
+import matplotlib.ticker as ticker
 
 nclicks = 2
 
@@ -34,6 +35,11 @@ def coordXform(orig_crs, target_crs, x, y):
 def tellme(s):
     plt.title(s, fontsize=16)
     plt.draw()
+
+def fmt(x, pos):
+    a, b = '{:.2e}'.format(x).split('e')
+    b = int(b)
+    return r'${} \times 10^{{{}}}$'.format(a, b)
     
 def draw_box(ax, limits, crs):
     max_lon, min_lon = limits['max_lon'], limits['min_lon']
@@ -57,7 +63,7 @@ def plot_zeta(ax, zeta, lat, lon, hgt=None):
     # plot contours
     cf1 = ax.contourf(lon, lat, zeta, cmap=cmap,norm=norm,levels=51,
                       transform=crs_longlat) 
-    plt.colorbar(cf1, pad=0.07, orientation='vertical', shrink=0.5)
+    plt.colorbar(cf1, pad=0.07, orientation='vertical', shrink=0.5, format=ticker.FuncFormatter(fmt))
     if hgt is not None:
         cs = ax.contour(lon, lat, hgt, levels=11, colors='#747578', 
                         linestyles='dashed',linewidths=1,transform=crs_longlat)
