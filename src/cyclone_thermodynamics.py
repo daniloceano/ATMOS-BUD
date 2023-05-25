@@ -585,10 +585,10 @@ domain by clicking on the screen.")
     help = "choose a name for saving results (default is\
  the same as infile)")
     
-    #args = parser.parse_args()
+    args = parser.parse_args()
 
     # For debuging:
-    args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
+    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
