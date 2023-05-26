@@ -223,8 +223,13 @@ def plot_min_zeta_hgt(track, FigsDir):
     ax1.xaxis.set_tick_params(labelsize=16)
     ax1.yaxis.set_tick_params(labelsize=16)
     ax2.yaxis.set_tick_params(labelsize=16)
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HZ'))
     
     # plt.title('System track and boxes defined for compuations \n', fontsize = 22)
     plt.savefig(FigsDir+'timeseries-min_zeta_hgt.png',bbox_inches='tight')
     print('\nCreated:',FigsDir+'track_boxes.png')
+
+if __name__ == '__main__':
+    import pandas as pd
+    track = pd.read_csv('../inputs/track',parse_dates=[0],
+                            delimiter=';',index_col='time')
+    plot_min_zeta_hgt(track, './')
