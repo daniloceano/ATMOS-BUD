@@ -153,17 +153,17 @@ def slice_domain(NetCDF_data, args, dfVars):
                             delimiter=';',index_col='time')
         if 'width' in track.columns:
             method = 'track'
-            min_width, max_width = track['width'].min(), track['width'].max()
-            min_length, max_length = track['length'].min(), track['length'].max()
+            max_width = track['width'].max()
+            max_length = track['length'].max()
         else:
             method = 'track-15x15'
-            min_width, max_width = 15, 15
-            min_length, max_length = 15, 15
+            max_width = 15
+            max_length = 15
             
-        WesternLimit = track['Lon'].min()-(min_width/2)
-        EasternLimit = track['Lon'].max()+(max_width/2)
-        SouthernLimit = track['Lat'].min()-(min_length/2)
-        NorthernLimit = track['Lat'].max()+(max_length/2)
+        WesternLimit = track['Lon'].min()-(max_width) - 5
+        EasternLimit = track['Lon'].max()+(max_width) + 5
+        SouthernLimit = track['Lat'].min()-(max_length) - 5
+        NorthernLimit = track['Lat'].max()+(max_length) + 5
         
     elif args.choose:
         method = 'choose'
@@ -426,17 +426,17 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
             # Check if 'min_zeta_850', 'min_hgt_850' and 'max_wind_850' columns exists in the track file.
             # If they exist, then retrieve and convert the value from the track file.  
             # If they do not exist, calculate them.
-            try:
+            if 'min_zeta_850' in track.columns:
                 min_zeta = float(track.loc[itime]['min_zeta_850'])
-            except KeyError:
+            else:
                 min_zeta = float(izeta_850_slice.min())
-            try:
+            if 'min_hgt_850' in track.columns:
                 min_hgt = float(track.loc[itime]['min_hgt_850'])
-            except KeyError:
+            else:
                 min_hgt = float(ight_850_slice.min())
-            try:
-                max_wind = float(track.loc[itime]['max_wind_850'])
-            except KeyError:
+            if 'min_zeta_850' in track.columns:
+                max_wind_850 = float(track.loc[itime]['max_wind_850'])
+            else:
                 max_wind = float(iwspd_850_slice.max())
         
         else:
@@ -548,7 +548,9 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
                     index=False, sep=";")
 
         plot_track(track, FigsDirectory)
-        plot_min_zeta_hgt(track, FigsDirectory)
+        track_plotting = track.copy()
+        track_plotting.index = track_plotting.time
+        plot_min_zeta_hgt(track_plotting, FigsDirectory)
                           
     
 if __name__ == "__main__":
