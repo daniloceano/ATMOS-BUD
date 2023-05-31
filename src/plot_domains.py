@@ -206,30 +206,50 @@ def plot_track(track, FigsDir):
     print('\nCreated figure with track and boxes defined for computations: '
           +FigsDir+'track_boxes.png')
     
-def plot_min_zeta_hgt(track, FigsDir):
-    plt.close('all')
-    fig, ax1 = plt.subplots(figsize=(15,10))
-    lns1 = ax1.plot(track.index, track['min_zeta_850'],c='#554348', marker='o',
-             label= '850 hPa minimum vorticity')
+import matplotlib.pyplot as plt
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import matplotlib.dates as mdates
+
+def plot_min_zeta_hgt(track, figs_dir, max_ticks=10):
+    fig, ax1 = plt.subplots(figsize=(15, 10))
+    line1 = ax1.plot(track.index, track['min_zeta_850'], c='#554348', marker='o',
+                     label='850 hPa minimum vorticity')
     ax2 = ax1.twinx()
-    lns2 = ax2.plot(track.index, track['min_hgt_850'],c='#6610F2', marker='s',
-             label= '850 hPa minimum geopotential height')
-    # added these three lines
-    lns = lns1+lns2
-    labs = [l.get_label() for l in lns]
-    ax2.legend(lns, labs, loc='best',prop={'size': 18})
-    ax1.grid(c='gray',linewidth=0.25,linestyle='dashdot', axis='x')
-    ax1.tick_params(axis='x', labelrotation=20)
-    ax1.xaxis.set_tick_params(labelsize=16)
-    ax1.yaxis.set_tick_params(labelsize=16)
-    ax2.yaxis.set_tick_params(labelsize=16)
+    line2 = ax2.plot(track.index, track['min_hgt_850'], c='#6610F2', marker='s',
+                     label='850 hPa minimum geopotential height')
     
-    # plt.title('System track and boxes defined for compuations \n', fontsize = 22)
-    plt.savefig(FigsDir+'timeseries-min_zeta_hgt.png',bbox_inches='tight')
-    print('\nCreated:',FigsDir+'track_boxes.png')
+    # Combine lines and labels
+    lines = line1 + line2
+    labels = [line.get_label() for line in lines]
+    
+    # Add legend
+    ax2.legend(lines, labels, loc='best', prop={'size': 18})
+    
+    # Customize axes
+    ax1.set_title('System track and boxes defined for computations', fontsize=22)
+    ax1.grid(c='gray', linewidth=0.25, linestyle='dashdot', axis='x')
+    ax1.xaxis.set_major_locator(MaxNLocator(max_ticks))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HZ'))
+    ax1.tick_params(axis='x', labelrotation=20)
+    ax1.tick_params(axis='x', labelsize=16)
+    ax1.tick_params(axis='y', labelsize=16)
+    ax2.tick_params(axis='y', labelsize=16)
+    
+    # Save the figure
+    filename = f"{figs_dir}timeseries-min_zeta_hgt.png"
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close(fig)
+    
+    print(f"Created: {filename}")
+
 
 if __name__ == '__main__':
     import pandas as pd
-    track = pd.read_csv('../inputs/track',parse_dates=[0],
+    track = pd.read_csv('../inputs/track-test',parse_dates=[0],
                             delimiter=';',index_col='time')
     plot_min_zeta_hgt(track, './')
