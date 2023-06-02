@@ -12,19 +12,25 @@ Created by:
 Contact:
     danilo.oceano@gmail.com
 """
+import os 
+import cmocean.cm as cmo
+import pandas as pd
 
-import cartopy.crs as ccrs
-import matplotlib.pyplot as plt
-from shapely.geometry.polygon import Polygon
+from select_area import plot_zeta 
 from sklearn import preprocessing
+
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.dates as mdates
+from matplotlib.ticker import MaxNLocator
+from shapely.geometry.polygon import Polygon
+
+import cartopy
+import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature, COASTLINE
 from cartopy.feature import BORDERS
-import cartopy
-import cmocean.cm as cmo
-import matplotlib.dates as mdates
-import os 
-from select_area import plot_zeta 
+
 
 def check_create_folder(DirName, verbose=True):
     """
@@ -205,22 +211,13 @@ def plot_track(track, FigsDir):
     plt.savefig(FigsDir+'track_boxes.png',bbox_inches='tight')
     print('\nCreated figure with track and boxes defined for computations: '
           +FigsDir+'track_boxes.png')
-    
-import matplotlib.pyplot as plt
 
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-import matplotlib.dates as mdates
-
-def plot_min_zeta_hgt(track, figs_dir, max_ticks=10):
+def plot_min_zeta_hgt(track_plotting, figs_dir, max_ticks=10):
     fig, ax1 = plt.subplots(figsize=(15, 10))
-    line1 = ax1.plot(track.index, track['min_zeta_850'], c='#554348', marker='o',
+    line1 = ax1.plot(pd.to_datetime(track_plotting.time), track_plotting['min_zeta_850'], c='#554348', marker='o',
                      label='850 hPa minimum vorticity')
     ax2 = ax1.twinx()
-    line2 = ax2.plot(track.index, track['min_hgt_850'], c='#6610F2', marker='s',
+    line2 = ax2.plot(pd.to_datetime(track_plotting.time), track_plotting['min_hgt_850'], c='#6610F2', marker='s',
                      label='850 hPa minimum geopotential height')
     
     # Combine lines and labels
