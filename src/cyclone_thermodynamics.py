@@ -66,7 +66,7 @@ def check_create_folder(DirName, verbose=True):
         if verbose:
             print(DirName+' directory exists')
  
-def convert_lon(xr,LonIndexer):
+def convert_lon(infile,LonIndexer):
     """
     
     Convert longitudes from 0:360 range to -180:180
@@ -84,9 +84,9 @@ def convert_lon(xr,LonIndexer):
         gridded data with longitude converted to desired format.
 
     """
-    xr.coords[LonIndexer] = (xr.coords[LonIndexer] + 180) % 360 - 180
-    xr = xr.sortby(xr[LonIndexer])
-    return xr
+    infile.coords[LonIndexer] = (infile.coords[LonIndexer] + 180) % 360 - 180
+    infile = infile.sortby(infile[LonIndexer])
+    return infile
 
 def find_extremum_coordinates(data, lat, lon, variable):
     """
@@ -153,17 +153,17 @@ def slice_domain(NetCDF_data, args, dfVars):
                             delimiter=';',index_col='time')
         if 'width' in track.columns:
             method = 'track'
-            min_width, max_width = track['width'].min(), track['width'].max()
-            min_length, max_length = track['length'].min(), track['length'].max()
+            max_width = track['width'].max()
+            max_length = track['length'].max()
         else:
             method = 'track-15x15'
-            min_width, max_width = 15, 15
-            min_length, max_length = 15, 15
+            max_width = 15
+            max_length = 15
             
-        WesternLimit = track['Lon'].min()-(min_width/2)
-        EasternLimit = track['Lon'].max()+(max_width/2)
-        SouthernLimit = track['Lat'].min()-(min_length/2)
-        NorthernLimit = track['Lat'].max()+(max_length/2)
+        WesternLimit = track['Lon'].min()-(max_width) - 5
+        EasternLimit = track['Lon'].max()+(max_width) + 5
+        SouthernLimit = track['Lat'].min()-(max_length) - 5
+        NorthernLimit = track['Lat'].max()+(max_length) + 5
         
     elif args.choose:
         method = 'choose'
@@ -233,7 +233,7 @@ with the guys from metpy")
                 'Geopotential']['Variable']] * units(dfVars.loc[
                     'Geopotential']['Units']).to('m**2/s**2'))/g
         self.Pressure = (self.NetCDF_data[self.LevelIndexer]
-                ) * units(self.NetCDF_data[self.LevelIndexer].units).to('Pa')
+                ) * units('Pa')
         
         self.lons  = self.NetCDF_data[self.LonIndexer]
         self.lats = self.NetCDF_data[self.LatIndexer]
@@ -252,7 +252,7 @@ with the guys from metpy")
         self.AdvVTemp = -1 * (self.Temperature.differentiate(self.LevelIndexer
                     ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
         self.Sigma = (-1 * (self.Temperature/theta) * (theta.differentiate(
-            self.LevelIndexer) / units(str(theta[LevelIndexer].metpy.units)))
+            self.LevelIndexer) / units('Pa'))
             ).metpy.convert_units('K / Pa')
         self.ResT =  self.dTdt - self.AdvHTemp - (self.Sigma * self.Omega)
         self.AdiabaticHeating = self.ResT*Cp_d
@@ -262,7 +262,7 @@ with the guys from metpy")
         self.dZdt = dZdt
         self.AdvHZeta = self.HorizontalVorticityAdvection()
         self.AdvVZeta = -1 * (self.Zeta.differentiate(self.LevelIndexer
-                    ) * self.Omega) / (1 * self.Pressure.metpy.units).to('Pa')
+                    ) * self.Omega) / (1 * units('Pa'))
         self.Beta = (self.f).differentiate(self.LatIndexer)/self.dy
         self.vxBeta = -1 * (self.v * self.Beta)
         self.DivH = divergence(self.u, self.v)
@@ -291,9 +291,9 @@ with the guys from metpy")
         dOmegady = dOmegalambda/self.dy
         dOmegadx = dOmegadphi/self.dx
         dudp = self.u.differentiate(self.LevelIndexer
-                                ) / (1 * self.Pressure.metpy.units).to('Pa')
+                                ) / (1 * units('Pa'))
         dvdp = self.v.differentiate(self.LevelIndexer
-                                ) /(1 * self.Pressure.metpy.units).to('Pa')
+                                ) /(1 * units('Pa'))
         return (dOmegady*dudp) - (dOmegadx*dvdp)
     
 
@@ -372,12 +372,12 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
         MovingObj = DataObject(NetCDF_data.sel({TimeIndexer:t}), dTdt=dTdt.sel({TimeIndexer:t}),
                                  dZdt=dZdt.sel({TimeIndexer:t}), dfVars=dfVars, args=args)
 
-        iu_850 = MovingObj.u.sel({LevelIndexer:850})
-        iv_850 = MovingObj.v.sel({LevelIndexer:850})
-        ight_850 = MovingObj.GeopotHeight.sel({LevelIndexer:850})
+        iu_850 = MovingObj.u.sel({LevelIndexer:85000})
+        iv_850 = MovingObj.v.sel({LevelIndexer:85000})
+        ight_850 = MovingObj.GeopotHeight.sel({LevelIndexer:85000})
         iwspd_850 = wind_speed(iu_850, iv_850)
         
-        zeta = MovingObj.Zeta.sel({LevelIndexer:850}).metpy.dequantify()
+        zeta = MovingObj.Zeta.sel({LevelIndexer:85000}).metpy.dequantify()
         dx = float(NetCDF_data[LonIndexer][1]-NetCDF_data[LonIndexer][0])
         if dx < 1:
             zeta = zeta.to_dataset(name='vorticity'
@@ -426,17 +426,17 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
             # Check if 'min_zeta_850', 'min_hgt_850' and 'max_wind_850' columns exists in the track file.
             # If they exist, then retrieve and convert the value from the track file.  
             # If they do not exist, calculate them.
-            try:
+            if 'min_zeta_850' in track.columns:
                 min_zeta = float(track.loc[itime]['min_zeta_850'])
-            except KeyError:
+            else:
                 min_zeta = float(izeta_850_slice.min())
-            try:
+            if 'min_hgt_850' in track.columns:
                 min_hgt = float(track.loc[itime]['min_hgt_850'])
-            except KeyError:
+            else:
                 min_hgt = float(ight_850_slice.min())
-            try:
-                max_wind = float(track.loc[itime]['max_wind_850'])
-            except KeyError:
+            if 'min_zeta_850' in track.columns:
+                max_wind_850 = float(track.loc[itime]['max_wind_850'])
+            else:
                 max_wind = float(iwspd_850_slice.max())
         
         else:
@@ -548,7 +548,9 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
                     index=False, sep=";")
 
         plot_track(track, FigsDirectory)
-        plot_min_zeta_hgt(track, FigsDirectory)
+        track_plotting = track.copy()
+        track_plotting.index = track_plotting.time
+        plot_min_zeta_hgt(track_plotting, FigsDirectory)
                           
     
 if __name__ == "__main__":
@@ -586,6 +588,8 @@ domain by clicking on the screen.")
  the same as infile)")
     
     args = parser.parse_args()
+    # args = parser.parse_args(['../../../AnaB/cyclone_thermodynamics/src/dados_3h.nc',
+     #                         '-t'])
 
     # For debuging:
     # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
@@ -640,6 +644,11 @@ domain by clicking on the screen.")
         {"coslats": np.cos(np.deg2rad(NetCDF_data[LatIndexer]))})
     NetCDF_data = NetCDF_data.assign_coords(
         {"rlons": np.deg2rad(NetCDF_data[LonIndexer])})
+    
+    # Force coordinates to be in Pa
+    new_pressure = (NetCDF_data.level).metpy.convert_units('Pa') * units('Pa')
+    NetCDF_data = NetCDF_data.assign_coords({LevelIndexer: new_pressure})
+    
     print('Done.')
 
     # Computeterms with temporal dependency
