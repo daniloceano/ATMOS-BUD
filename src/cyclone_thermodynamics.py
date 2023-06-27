@@ -646,7 +646,7 @@ domain by clicking on the screen.")
         {"rlons": np.deg2rad(NetCDF_data[LonIndexer])})
     
     # Force coordinates to be in Pa
-    new_pressure = (NetCDF_data.level).metpy.convert_units('Pa') * units('Pa')
+    new_pressure = (NetCDF_data[LevelIndexer]).metpy.convert_units('Pa') * units('Pa')
     NetCDF_data = NetCDF_data.assign_coords({LevelIndexer: new_pressure})
     
     print('Done.')
