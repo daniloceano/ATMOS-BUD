@@ -84,7 +84,10 @@ def plot_min_max_zeta(ax, zeta, lat, lon, limits):
     # Plot mininum zeta point whithin box
     izeta = zeta.sel({lon.dims[0]:slice(min_lon,max_lon),
                     lat.dims[0]:slice(min_lat,max_lat)})
-    min_max_zeta = izeta.min()
+    if float(min_lat) < 0:
+        min_max_zeta = izeta.min()
+    else:
+        min_max_zeta = izeta.max()
     min_max_zeta_loc = izeta.where(izeta==min_max_zeta, drop=True).squeeze()
     # sometimes there are multiple minimuns
     if min_max_zeta_loc.shape:
