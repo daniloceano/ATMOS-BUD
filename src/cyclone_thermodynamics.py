@@ -106,9 +106,10 @@ def find_extremum_coordinates(data, lat, lon, variable):
     lon_values = lon.values
 
     if variable == 'min_max_zeta_850':
-        index = np.unravel_index(data.argmin(), data.shape)
-    elif variable == 'max_zeta':
-        index = np.unravel_index(data.argmax(), data.shape)
+        if float(lat.min()) < 0:
+            index = np.unravel_index(data.argmin(), data.shape)
+        else:
+            index = np.unravel_index(data.argmax(), data.shape)
     elif variable == 'min_hgt':
         index = np.unravel_index(data.argmin(), data.shape)
     elif variable == 'max_wind':
@@ -595,10 +596,11 @@ domain by clicking on the screen.")
     help = "choose a name for saving results (default is\
  the same as infile)")
     
-    args = parser.parse_args()
+    #args = parser.parse_args()
 
     # For debuging:
     # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
+    args = parser.parse_args(['../samples/Ian.nc', '-c'])
 
     start_time = time.time()
     
