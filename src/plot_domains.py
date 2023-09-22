@@ -215,7 +215,7 @@ def plot_track(track, FigsDir):
 def plot_min_max_zeta_hgt(track_plotting, figs_dir, max_ticks=10):
     fig, ax1 = plt.subplots(figsize=(15, 10))
     line1 = ax1.plot(pd.to_datetime(track_plotting.time), track_plotting['min_max_zeta_850'], c='#554348', marker='o',
-                     label='850 hPa min/max vorticity')
+                     label='850 hPa min/max $\zeta$')
     ax2 = ax1.twinx()
     line2 = ax2.plot(pd.to_datetime(track_plotting.time), track_plotting['min_hgt_850'], c='#6610F2', marker='s',
                      label='850 hPa minimum geopotential height')

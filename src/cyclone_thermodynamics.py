@@ -598,7 +598,7 @@ domain by clicking on the screen.")
     # args = parser.parse_args()
 
     # For debuging:
-    args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
+    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     
