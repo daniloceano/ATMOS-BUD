@@ -38,7 +38,7 @@ from select_area import initial_domain
 
 from plot_domains import plot_fixed_domain
 from plot_domains import plot_track
-from plot_domains import plot_min_zeta_hgt
+from plot_domains import plot_min_max_zeta_hgt
 
 import dask
 
@@ -105,8 +105,10 @@ def find_extremum_coordinates(data, lat, lon, variable):
     lat_values = lat.values
     lon_values = lon.values
 
-    if variable == 'min_zeta':
+    if variable == 'min_max_zeta_850':
         index = np.unravel_index(data.argmin(), data.shape)
+    elif variable == 'max_zeta':
+        index = np.unravel_index(data.argmax(), data.shape)
     elif variable == 'min_hgt':
         index = np.unravel_index(data.argmin(), data.shape)
     elif variable == 'max_wind':
@@ -317,13 +319,6 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
     if args.track:
         trackfile = '../inputs/track'
         track = pd.read_csv(trackfile,parse_dates=[0],delimiter=';',index_col='time')
-
-    # Dictionary for saving system position and attributes
-    position = {}
-    results_keys = ['time', 'central_lat', 'central_lon', 'length', 'width',
-            'min_zeta_850','min_hgt_850','max_wind_850']
-    for key in results_keys:
-        position[key] =  []
         
     # Dictionary to save DataArray results and transform into nc later
     results_nc = {}
@@ -362,6 +357,13 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
         NorthernLimit = max_lat =float(NetCDF_data[LatIndexer].sel(
             {LatIndexer:float(dfbox.loc['max_lat'].values)},
             method='nearest'))
+        
+    # Dictionary for saving system position and attributes
+    position = {}
+    results_keys = ['time', 'central_lat', 'central_lon', 'length', 'width',
+            'min_max_zeta_850','min_hgt_850','max_wind_850']
+    for key in results_keys:
+        position[key] =  []
     
     for t in timesteps:
         
@@ -423,38 +425,41 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
         iwspd_850_slice = iwspd_850.sel({LatIndexer:slice(min_lat, max_lat), LonIndexer:slice(min_lon, max_lon)})
 
         if args.track:
-            # Check if 'min_zeta_850', 'min_hgt_850' and 'max_wind_850' columns exists in the track file.
+            # Check if 'min_max_zeta_850', 'min_hgt_850' and 'max_wind_850' columns exists in the track file.
             # If they exist, then retrieve and convert the value from the track file.  
             # If they do not exist, calculate them.
-            if 'min_zeta_850' in track.columns:
-                min_zeta = float(track.loc[itime]['min_zeta_850'])
+            if 'min_max_zeta_850' in track.columns:
+                min_max_zeta = float(track.loc[itime]['min_max_zeta_850'])
             else:
-                min_zeta = float(izeta_850_slice.min())
+                min_max_zeta = float(izeta_850_slice.min())
             if 'min_hgt_850' in track.columns:
                 min_hgt = float(track.loc[itime]['min_hgt_850'])
             else:
                 min_hgt = float(ight_850_slice.min())
-            if 'min_zeta_850' in track.columns:
+            if 'max_wind_850' in track.columns:
                 max_wind_850 = float(track.loc[itime]['max_wind_850'])
             else:
                 max_wind = float(iwspd_850_slice.max())
         
         else:
-            min_zeta = float(izeta_850_slice.min())
+            if min_lat < 0:
+                min_max_zeta = float(izeta_850_slice.min())
+            else:
+                min_max_zeta = float(izeta_850_slice.max())
             min_hgt = float(ight_850_slice.min())
             max_wind = float(iwspd_850_slice.max())
 
         # Find position of the extremes
         lat_slice, lon_slice = izeta_850_slice[LatIndexer], izeta_850_slice[LonIndexer]
-        min_zeta_lat, min_zeta_lon = find_extremum_coordinates(izeta_850_slice, lat_slice, lon_slice, 'min_zeta')
+        min_max_zeta_lat, min_max_zeta_lon = find_extremum_coordinates(izeta_850_slice, lat_slice, lon_slice, 'min_max_zeta_850')
         min_hgt_lat, min_hgt_lon = find_extremum_coordinates(ight_850_slice, lat_slice, lon_slice, 'min_hgt')
         max_wind_lat, max_wind_lon = find_extremum_coordinates(iwspd_850_slice, lat_slice, lon_slice, 'max_wind')
        
         # Store the results in a dictionary for plotting purposes
         data850 = {
-            'min_zeta': {
-                'latitude': min_zeta_lat,
-                'longitude': min_zeta_lon,
+            'min_max_zeta_850': {
+                'latitude': min_max_zeta_lat,
+                'longitude': min_max_zeta_lon,
                 'data': zeta
             },
             'min_hgt': {
@@ -481,23 +486,26 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
             central_lon = (limits['max_lon'] + limits['min_lon'])/2
             length = limits['max_lat'] - limits['min_lat']
             width = limits['max_lon'] - limits['min_lon']
-            min_zeta = float(zeta.min())
             min_hgt = float(ight_850.min())
             max_wind = float(wind_speed(iu_850, iv_850).max())
+            if min_lat < 0:
+                min_max_zeta = float(zeta.min())
+            else:
+                min_max_zeta = float(zeta.max())
         
             values = [datestr, central_lat, central_lon, length, width,
-                  min_zeta, min_hgt, max_wind]
+                  min_max_zeta, min_hgt, max_wind]
             for key,val in zip(results_keys,values):
                 position[key].append(val)
             
             print('\nTime: ',datestr)
-            print('Box min_lon, max_lon: '+str(min_lon)+'/'+str(max_lon))
-            print('Box min_lat, max_lat: '+str(min_lat)+'/'+str(max_lat))
-            print('Box size (longitude): '+str(width))
-            print('Box size (latitude): '+str(length))
-            print('Minimum vorticity at 850 hPa:',min_zeta)
-            print('Minimum geopotential height at 850 hPa:',min_hgt)
-            print('Maximum wind speed at 850 hPa:',max_wind)
+            print('Box min_lon, max_lon: ' + str(min_lon)+'/'+str(max_lon))
+            print('Box min_lat, max_lat: ' + str(min_lat)+'/'+str(max_lat))
+            print('Box size (longitude): ' + str(width))
+            print('Box size (latitude): ' + str(length))
+            print('Minimum/maximum vorticity at 850 hPa:', min_max_zeta)
+            print('Minimum geopotential height at 850 hPa:', min_hgt)
+            print('Maximum wind speed at 850 hPa:', max_wind)
             
             WesternLimit = float(NetCDF_data[LonIndexer].sel(
                 {LonIndexer:min_lon}, method='nearest'))
@@ -550,7 +558,7 @@ def cyclone_thermodynamics(NetCDF_data, dfVars, dTdt, dZdt, args):
         plot_track(track, FigsDirectory)
         track_plotting = track.copy()
         track_plotting.index = track_plotting.time
-        plot_min_zeta_hgt(track_plotting, FigsDirectory)
+        plot_min_max_zeta_hgt(track_plotting, FigsDirectory)
                           
     
 if __name__ == "__main__":
@@ -587,12 +595,10 @@ domain by clicking on the screen.")
     help = "choose a name for saving results (default is\
  the same as infile)")
     
-    args = parser.parse_args()
-    # args = parser.parse_args(['../../../AnaB/cyclone_thermodynamics/src/dados_3h.nc',
-     #                         '-t'])
+    # args = parser.parse_args()
 
     # For debuging:
-    # args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
+    args = parser.parse_args(['../samples/Reg1-Representative_NCEP-R2.nc', '-t'])
 
     start_time = time.time()
     

@@ -111,14 +111,14 @@ def plot_fixed_domain(limits, data850, ResultsSubDirectory, time):
     plt.title('Box defined for computations\n', fontsize=22)
 
     # Plot central point, mininum vorticity, minimum hgt and maximum wind 
-    plot_zeta(ax, data850['min_zeta']['data'], data850['lat'], data850['lon'], data850['min_hgt']['data'])
+    plot_zeta(ax, data850['min_max_zeta_850']['data'], data850['lat'], data850['lon'], data850['min_hgt']['data'])
     map_features(ax)
     Brazil_states(ax, facecolor='None')
 
     # Plot central point, mininum vorticity, minimum hgt and maximum wind
     ax.scatter(central_lon, central_lat,  marker='o', c='#31332e', s=100, zorder=4)
-    ax.scatter(data850['min_zeta']['longitude'], data850['min_zeta']['latitude'],
-                marker='s', c='#31332e', s=100, zorder=4, label='min zeta')
+    ax.scatter(data850['min_max_zeta_850']['longitude'], data850['min_max_zeta_850']['latitude'],
+                marker='s', c='#31332e', s=100, zorder=4, label='min/max zeta')
     ax.scatter(data850['min_hgt']['longitude'], data850['min_hgt']['latitude'],
                 marker='x', c='#31332e', s=100, zorder=4, label='min hgt')
     ax.scatter(data850['max_wind']['longitude'], data850['max_wind']['latitude'],
@@ -176,13 +176,13 @@ def plot_track(track, FigsDir):
             
     plt.plot(track['Lon'], track['Lat'],c='#383838')
     
-    if 'min_zeta_850' and 'max_wind_850' in track.columns:
+    if 'min_max_zeta_850' and 'max_wind_850' in track.columns:
         normalized = preprocessing.normalize(
             track['max_wind_850'].values.reshape(1, -1))
         normalized = normalized**4 * 100000
         scatter = ax.scatter(track['Lon'].loc[track.index],
                            track['Lat'].loc[track.index],
-                           zorder=100,c=track['min_zeta_850'],
+                           zorder=100,c=track['min_max_zeta_850'],
                            cmap=cmo.deep_r, edgecolor='gray',
                            s=normalized, label=normalized)
         # produce a legend with a cross section of sizes from the scatter
@@ -212,10 +212,10 @@ def plot_track(track, FigsDir):
     print('\nCreated figure with track and boxes defined for computations: '
           +FigsDir+'track_boxes.png')
 
-def plot_min_zeta_hgt(track_plotting, figs_dir, max_ticks=10):
+def plot_min_max_zeta_hgt(track_plotting, figs_dir, max_ticks=10):
     fig, ax1 = plt.subplots(figsize=(15, 10))
-    line1 = ax1.plot(pd.to_datetime(track_plotting.time), track_plotting['min_zeta_850'], c='#554348', marker='o',
-                     label='850 hPa minimum vorticity')
+    line1 = ax1.plot(pd.to_datetime(track_plotting.time), track_plotting['min_max_zeta_850'], c='#554348', marker='o',
+                     label='850 hPa min/max vorticity')
     ax2 = ax1.twinx()
     line2 = ax2.plot(pd.to_datetime(track_plotting.time), track_plotting['min_hgt_850'], c='#6610F2', marker='s',
                      label='850 hPa minimum geopotential height')
@@ -238,7 +238,7 @@ def plot_min_zeta_hgt(track_plotting, figs_dir, max_ticks=10):
     ax2.tick_params(axis='y', labelsize=16)
     
     # Save the figure
-    filename = f"{figs_dir}timeseries-min_zeta_hgt.png"
+    filename = f"{figs_dir}timeseries-min_max_zeta_hgt.png"
     plt.savefig(filename, bbox_inches='tight')
     plt.close(fig)
     
@@ -249,4 +249,4 @@ if __name__ == '__main__':
     import pandas as pd
     track = pd.read_csv('../inputs/track-test',parse_dates=[0],
                             delimiter=';',index_col='time')
-    plot_min_zeta_hgt(track, './')
+    plot_min_max_zeta_hgt(track, './')

@@ -78,29 +78,29 @@ def map_decorators(ax):
     gl.top_labels = None
     gl.right_labels = None
     
-def plot_min_zeta(ax, zeta, lat, lon, limits):
+def plot_min_max_zeta(ax, zeta, lat, lon, limits):
     max_lon, min_lon = limits['max_lon'], limits['min_lon']
     max_lat, min_lat = limits['max_lat'], limits['min_lat']
     # Plot mininum zeta point whithin box
     izeta = zeta.sel({lon.dims[0]:slice(min_lon,max_lon),
                     lat.dims[0]:slice(min_lat,max_lat)})
-    zeta_min = izeta.min()
-    zeta_min_loc = izeta.where(izeta==zeta_min, drop=True).squeeze()
+    min_max_zeta = izeta.min()
+    min_max_zeta_loc = izeta.where(izeta==min_max_zeta, drop=True).squeeze()
     # sometimes there are multiple minimuns
-    if zeta_min_loc.shape:
-        if len(zeta_min_loc.shape) >1:
-            for points in zeta_min_loc:
+    if min_max_zeta_loc.shape:
+        if len(min_max_zeta_loc.shape) >1:
+            for points in min_max_zeta_loc:
                 for point in points:
                     ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
                            marker='o', facecolors='none', linewidth=3,
                            edgecolor='k',  s=200)
         else:
-            for point in zeta_min_loc:
+            for point in min_max_zeta_loc:
                 ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
                        marker='o', facecolors='none', linewidth=3,
                        edgecolor='k',  s=200)
     else:
-        ax.scatter(zeta_min_loc[lon.dims[0]], zeta_min_loc[lat.dims[0]],
+        ax.scatter(min_max_zeta_loc[lon.dims[0]], min_max_zeta_loc[lat.dims[0]],
                marker='o', facecolors='none', linewidth=3,
                edgecolor='k',  s=200)
 
@@ -173,7 +173,7 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
         limits = {'min_lon':min_lon,'max_lon':max_lon,
                 'min_lat':min_lat, 'max_lat':max_lat}
         draw_box(ax, limits, crs_longlat)
-        plot_min_zeta(ax, zeta, lat, lon, limits)
+        plot_min_max_zeta(ax, zeta, lat, lon, limits)
     
         tellme('Happy? Key press any keyboard key for yes, mouse click for no')
         
