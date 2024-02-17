@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/06 12:33:00 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:22:43 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/17 00:45:15 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,6 +19,7 @@ Affiliation: Universidade de São Paulo (USP), Instituto de Astornomia, Ciência
 Contact: danilo.oceano@gmail.com
 """
 
+from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
@@ -231,11 +232,16 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
     ax.streamplot(lon.values, lat.values, u.values, v.values, color='#2A1D21',
               transform=crs_longlat)
     map_decorators(ax)
+
+    # Convert to datetime object
+    date_obj = datetime.strptime(timestr, '%Y-%m-%d %H:%M:%S%z')
+    # Format datetime object to desired string format (YYYY-MM-DD HH)
+    formatted_date_str = date_obj.strftime('%Y-%m-%d %H')
     
     while True:
         pts = []
         while len(pts) < nclicks:
-            tellme('Select box corners \nModel time step: '+timestr[:-13])
+            tellme(f'Select box corners \nModel time step: {formatted_date_str}')
             pts = np.asarray(plt.ginput(nclicks, timeout=15,
                                         mouse_stop='MouseButton.MIDDLE'))
             if len(pts) < nclicks:
@@ -308,7 +314,14 @@ def get_domain_limits(args, *variables_at_850hpa, track=None):
         width, length = max_lon - min_lon, max_lat - min_lat
         central_lat = (max_lat + min_lat) / 2
         central_lon = (max_lon + min_lon) / 2
-        current_domain_limits['central_lat'], current_domain_limits['central_lon'] = central_lat, central_lon
+        current_domain_limits = {
+            'min_lon': min_lon,
+            'max_lon': max_lon,
+            'min_lat': min_lat,
+            'max_lat': max_lat,
+            'central_lat': central_lat,
+            'central_lon': central_lon
+            }
 
     elif args.fixed:
         dfbox = pd.read_csv('inputs/box_limits',header=None, delimiter=';',index_col=0)

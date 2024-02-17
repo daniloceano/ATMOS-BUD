@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:23:49 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/17 00:36:36 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -233,17 +233,11 @@ def slice_domain(input_data, args, namelist_df):
         NorthernLimit = track['Lat'].max()+(max_length) + 5
         
     elif args.choose:
-        iu_850 = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:850}
+        iu_850 = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:85000}, method='nearest'
                         )[namelist_df.loc['Eastward Wind Component']['Variable']]
-        iv_850 = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:850}
+        iv_850 = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:85000}, method='nearest'
                         )[namelist_df.loc['Northward Wind Component']['Variable']]
         zeta = vorticity(iu_850, iv_850).metpy.dequantify()
-        
-        # Apply filter when using high resolution gridded data
-        dx = float(iv_850[longitude_indexer][1]-iv_850[longitude_indexer][0])
-        if dx < 1:
-            zeta = zeta.to_dataset(name='vorticity'
-                ).apply(savgol_filter,window_length=31, polyorder=2).vorticity
         
         lat, lon = iu_850[latitude_indexer], iu_850[longitude_indexer]
         domain_limits = initial_domain(zeta, lat, lon)
@@ -258,7 +252,7 @@ def slice_domain(input_data, args, namelist_df):
     
     return input_data
 
-def get_domain_extreme_values(track, itime, args, min_lat, *slices_850):
+def get_domain_extreme_values(itime, args, min_lat, *slices_850, track=None):
     """
     Retrieves or calculates extreme values (minimum/maximum vorticity, minimum geopotential height,
     and maximum wind speed) within a specified domain at 850 hPa.

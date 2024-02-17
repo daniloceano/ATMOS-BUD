@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 15:22:52 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 21:13:04 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/17 00:12:27 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -87,6 +87,11 @@ def preprocess_data(data, df_namelist, args, app_logger):
     # Ensure critical namelist variables are present
     if not all([longitude_indexer, latitude_indexer, vertical_level_indexer]):
         raise ValueError('Missing critical namelist variables.')
+    
+    # Force vertical levels to be in Pa
+    app_logger.debug('Force vertical levels to be in Pa...')
+    new_pressure = (data[vertical_level_indexer]).metpy.convert_units('Pa') * units('Pa')
+    data = data.assign_coords({vertical_level_indexer: new_pressure})
 
     # Sort data coordinates as data from distinc sources might have different arrangements and this might affect the results from the integrations
     app_logger.debug('Sorting data by longitude, vertical level and latitude...')
@@ -101,11 +106,6 @@ def preprocess_data(data, df_namelist, args, app_logger):
     data = data.assign_coords({"rlats": np.deg2rad(data[latitude_indexer])})
     data = data.assign_coords({"coslats": np.cos(np.deg2rad(data[latitude_indexer]))})
     data = data.assign_coords({"rlons": np.deg2rad(data[longitude_indexer])})
-    
-    # Force vertical levels to be in Pa
-    app_logger.debug('Force vertical levels to be in Pa...')
-    new_pressure = (data[vertical_level_indexer]).metpy.convert_units('Pa') * units('Pa')
-    data = data.assign_coords({vertical_level_indexer: new_pressure})
     
     app_logger.info('Done.')
 
