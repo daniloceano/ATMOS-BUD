@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:37:46 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/17 00:36:36 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -174,7 +174,10 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, args, app_logger, 
 
         # Get domain limits for the current time step
         variables_at_850hpa  = [iu_850, iv_850, zeta, ight_850, lat, lon, itime]
-        current_domain_limits = get_domain_limits(args, *variables_at_850hpa, track=track)
+        if 'track' in locals() or 'track' in globals():
+            current_domain_limits = get_domain_limits(args, *variables_at_850hpa, track=track)
+        else:
+            current_domain_limits = get_domain_limits(args, *variables_at_850hpa)
         min_lat, max_lat = current_domain_limits['min_lat'], current_domain_limits['max_lat']
         min_lon, max_lon = current_domain_limits['min_lon'], current_domain_limits['max_lon']
         central_lat, central_lon = current_domain_limits['central_lat'], current_domain_limits['central_lon']
@@ -186,7 +189,10 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, args, app_logger, 
 
         # Get the extreme values at 850 hPa for the current time step
         slices_850 = [izeta_850_slice, ight_850_slice, iwspd_850_slice]
-        min_max_zeta, min_hgt, max_wind = get_domain_extreme_values(track, itime, args, min_lat, *slices_850)
+        if 'track' in locals() or 'track' in globals():
+            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values( itime, args, min_lat, *slices_850, track)
+        else:
+            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values( itime, args, min_lat, *slices_850)
 
         # Find position of the extremes
         lat_slice, lon_slice = izeta_850_slice[latitude_indexer], izeta_850_slice[longitude_indexer]

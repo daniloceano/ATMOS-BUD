@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:34:50 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/16 23:59:07 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -108,7 +108,7 @@ def save_output_track(output_track_attributes, results_subdirectory, figures_sub
         track_file_path = os.path.join(results_subdirectory, f'{outfile_name}_track.csv')
         track.to_csv(track_file_path, index=False, sep=";")
 
-        plot_track(track, figures_subdirectory)
+        plot_track(track, figures_subdirectory, app_logger)
         plot_min_max_zeta_hgt(track.set_index('time'), figures_subdirectory, app_logger)
     except Exception as e:
         app_logger.error(f"Error saving output track: {e}")

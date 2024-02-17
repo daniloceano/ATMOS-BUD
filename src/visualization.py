@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/11 16:54:18 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:34:52 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/17 00:06:56 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -136,7 +136,7 @@ def plot_fixed_domain(limits, data850, results_subdirectory, time, app_logger):
         filename = os.path.join(results_subdirectory, 'Figures', 'box.png')
 
     plt.savefig(filename)
-    app_logger.info(f'\nCreated figure with box defined for computations at {filename}')    
+    app_logger.info(f'\nCreated figure with box defined for computations at {os.path.basename(filename)}')    
     
 def plot_track(track, figures_directory, app_logger):
     """
@@ -182,8 +182,8 @@ def plot_track(track, figures_directory, app_logger):
             plt.colorbar(scatter, pad=0.1, orientation='vertical', shrink=0.5, label='Minimum vorticity')
         
         # Marking the start and end points
-        ax.text(track.iloc[0]['Lon'], track.iloc[0]['Lat'], 'Start', fontsize=12, ha='center', va='center', color='green')
-        ax.text(track.iloc[-1]['Lon'], track.iloc[-1]['Lat'], 'End', fontsize=12, ha='center', va='center', color='red')
+        ax.text(track.iloc[0]['Lon'], track.iloc[0]['Lat'], 'A', fontsize=12, ha='center', va='center', color='green')
+        ax.text(track.iloc[-1]['Lon'], track.iloc[-1]['Lat'], 'Z', fontsize=12, ha='center', va='center', color='red')
         
         filename = os.path.join(figures_directory, 'track_boxes.png')
         plt.savefig(filename, bbox_inches='tight')
@@ -205,22 +205,28 @@ def plot_min_max_zeta_hgt(track_plotting, figs_dir, app_logger, max_ticks=10):
     The function saves the generated plot as a PNG file within the specified directory.
     """
     try:
-        if not os.path.exists(figs_dir):
-            os.makedirs(figs_dir)
+        os.makedirs(figs_dir, exist_ok=True)
 
         fig, ax1 = plt.subplots(figsize=(15, 10))
-        ax1.plot(pd.to_datetime(track_plotting.time), track_plotting['min_max_zeta_850'], color='#554348', marker='o',
-                 label='850 hPa min/max $\zeta$')
+        ax1.plot(pd.to_datetime(track_plotting.index), track_plotting['min_max_zeta_850'], color='#554348', marker='o',
+                 label=r'850 hPa min/max $\zeta$')
         ax2 = ax1.twinx()
-        ax2.plot(pd.to_datetime(track_plotting.time), track_plotting['min_hgt_850'], color='#6610F2', marker='s',
+        ax2.plot(pd.to_datetime(track_plotting.index), track_plotting['min_hgt_850'], color='#6610F2', marker='s',
                  label='850 hPa minimum geopotential height')
         
-        # Combine lines and labels for legend
-        lines, labels = ax1.get_legend_handles_labels() + ax2.get_legend_handles_labels()
-        ax2.legend(lines, labels, loc='best', prop={'size': 18})
+        # Get handles and labels for each axis
+        handles1, labels1 = ax1.get_legend_handles_labels()
+        handles2, labels2 = ax2.get_legend_handles_labels()
+
+        # Combine the handles and labels
+        combined_handles = handles1 + handles2
+        combined_labels = labels1 + labels2
+
+        # Create a single legend with the combined handles and labels
+        ax2.legend(combined_handles, combined_labels, loc='best', prop={'size': 18})
         
         # Customize axes and title
-        ax1.set_title('System Track: Min/Max $\zeta$ and Min Geopotential Height at 850 hPa', fontsize=22)
+        ax1.set_title(r'System Track: Min/Max $\zeta$ and Min Geopotential Height at 850 hPa', fontsize=22)
         ax1.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
         ax1.xaxis.set_major_locator(MaxNLocator(max_ticks))
         ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HZ'))
