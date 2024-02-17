@@ -50,13 +50,13 @@ def grid_labels_params(ax,i):
     gl.yformatter = LATITUDE_FORMATTER
     return ax
 
-def map_variable(VariableData,FigsDirectory,fname):
+def map_variable(VariableData,figures_subdirectory,fname):
     """
     Parameters
     ----------
     VariableData : DataObj
         Object containing meteorological data from a NetCDF file
-    FigsDirectory : str
+    figures_subdirectory : str
         Directory where images will be saved.
     fname : str
         Name to append to outfile.
@@ -122,17 +122,17 @@ def map_variable(VariableData,FigsDirectory,fname):
         # decorators
         map_features(ax)
     # save file
-    outfile = FigsDirectory+'/'+fname
+    outfile = figures_subdirectory+'/'+fname
     plt.savefig(outfile, bbox_inches='tight')
     print(outfile+' created!')
     
 if __name__ == "__main__":
 
-    ResultsSubDirectory = sys.argv[1]
-    FigsSubDirectory = ResultsSubDirectory+'/Figures/maps/'; os.makedirs(
+    results_subdirectory = sys.argv[1]
+    FigsSubDirectory = results_subdirectory+'/Figures/maps/'; os.makedirs(
         FigsSubDirectory, exist_ok=True)
     
-    results_data = glob.glob(ResultsSubDirectory+'/*.nc')[0]
+    results_data = glob.glob(results_subdirectory+'/*.nc')[0]
     ds = xr.open_dataset(results_data, engine='netcdf4')
     
     periods = pd.read_csv('../inputs/periods',sep= ';',header=0)

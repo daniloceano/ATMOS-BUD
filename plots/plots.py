@@ -314,16 +314,16 @@ def plot_periods_vertical(ThermDict):
     
 if __name__ == "__main__":
     
-    ResultsSubDirectory = sys.argv[1]
+    results_subdirectory = sys.argv[1]
     # Directory for saving Figures
-    FigsSubDirectory = ResultsSubDirectory+'/Figures/'; os.makedirs(
+    FigsSubDirectory = results_subdirectory+'/Figures/'; os.makedirs(
         FigsSubDirectory, exist_ok=True)
 
     # Plot each term of the thermodynamic equation
     ThermDict = {}
     terms = ['AdvHTemp','Sigma', 'Omega','dTdt','ResT']
     for term in terms:
-        ThermDict[term] = pd.read_csv(ResultsSubDirectory+term+'.csv',index_col=0)
+        ThermDict[term] = pd.read_csv(results_subdirectory+term+'.csv',index_col=0)
         time_series_thermodyn(ThermDict)
         plot_Hovmoller(ThermDict[term],term,term)
     
