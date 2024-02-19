@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/17 00:10:35 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/19 16:11:15 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -45,7 +45,7 @@ def main():
     
     else:
         # For debuging:
-        debug_args = ['samples/sample1_ERA5.nc', '-c', '-v']
+        debug_args = ['samples/sample1_ERA5.nc', '-f', '-v']
         args = parse_arguments(debug_args)
 
     # Set method
@@ -77,13 +77,14 @@ def main():
 
     # Computeterms with temporal dependency
     app_logger.info('Computing zeta and temperature tendencies...')
-    dTdt =  input_data[namelist_df.loc['Air Temperature']['Variable']].differentiate(time_indexer,datetime_unit='s') * units('K/s')
+    dTdt =  input_data[namelist_df.loc['Air Temperature']['Variable']].differentiate(time_indexer, datetime_unit='s') * units('K/s')
     Zeta = vorticity(input_data[namelist_df.loc['Eastward Wind Component']['Variable']], input_data[namelist_df.loc['Northward Wind Component']['Variable']])          
     dZdt = Zeta.differentiate(time_indexer, datetime_unit='s') / units('s')
+    dQdt = input_data[namelist_df.loc['Specific Humidity']['Variable']].differentiate(time_indexer, datetime_unit='s') * units('kg/kg/s')
     app_logger.info('Done.')
 
     # Run the program
-    perform_calculations(input_data, namelist_df, dTdt, dZdt, args, app_logger, *outputs)
+    perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_logger, *outputs)
     app_logger.info("--- %s seconds for running the program ---" % (time.time() - start_time))
 
 if __name__ == "__main__":

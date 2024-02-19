@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 21:32:34 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 21:32:37 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/19 16:14:53 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -35,15 +35,18 @@ class DataObject:
         input_data (xr.Dataset): The input dataset containing meteorological variables.
         dTdt (xr.DataArray): Data array representing the temperature tendency.
         dZdt (xr.DataArray): Data array representing the geopotential height tendency.
+        dQdt (xr.DataArray): Data array representing the moisture tendency.
         namelist_df (pd.DataFrame): DataFrame mapping variable names and units.
         args (argparse.Namespace): Parsed command-line arguments.
         app_logger (logging.Logger): Logger for outputting information and error messages.
     """
-    def __init__(self, input_data: xr.Dataset, dTdt: xr.DataArray, dZdt: xr.DataArray, namelist_df: pd.DataFrame, args: argparse.Namespace, app_logger: logging.Logger):
+    def __init__(self, input_data: xr.Dataset, dTdt: xr.DataArray, dZdt: xr.DataArray, dQdt: xr.DataArray,
+                 namelist_df: pd.DataFrame, args: argparse.Namespace, app_logger: logging.Logger):
         try:
             self.extract_variables(input_data, namelist_df, args)
             self.calculate_thermodynamic_terms(dTdt)
             self.calculate_vorticity_terms(dZdt)
+            self.calculate_water_budget_terms(dQdt)
         except KeyError as e:
             app_logger.error(f'Missing key in namelist DataFrame or input data: {e}')
             raise
@@ -55,7 +58,7 @@ class DataObject:
         """Extracts variables from the input dataset and converts them to the appropriate units."""
         self.input_data = input_data.load() if args.gfs else input_data
 
-        # Extract variables using namelist DataFrame
+        # Extract indexers using namelist DataFrame
         self.longitude_indexer = namelist_df.loc['Longitude']['Variable']
         self.latitude_indexer = namelist_df.loc['Latitude']['Variable']
         self.time_indexer = namelist_df.loc['Time']['Variable']
@@ -67,6 +70,7 @@ class DataObject:
         self.v = self.convert_units('Northward Wind Component', namelist_df)
         self.Omega = self.convert_units('Omega Velocity', namelist_df)
         self.GeopotHeight = self.calculate_geopotential_height(namelist_df)
+        self.SpecificHumidity = self.convert_units('Specific Humidity', namelist_df)
         self.Pressure = self.input_data[self.vertical_level_indexer] * units('Pa')
 
         # Additional calculations for dx, dy, f, etc.
@@ -97,7 +101,7 @@ class DataObject:
         """Calculates thermodynamic terms."""
         self.Theta = potential_temperature(self.Pressure, self.Temperature)
         self.dTdt = dTdt
-        self.AdvHTemp = self.horizontal_temperature_advection()
+        self.AdvHTemp = self.calculate_horizontal_advection(self.Temperature)
         self.AdvVTemp = -1 * (self.Temperature.differentiate(self.vertical_level_indexer) * self.Omega) / (1 * units('Pa'))
         self.Sigma = (-1 * (self.Temperature / self.Theta) * (self.Theta.differentiate(self.vertical_level_indexer) / units('Pa'))).metpy.convert_units('K / Pa')
         self.ResT =  self.dTdt - self.AdvHTemp - (self.Sigma * self.Omega)
@@ -107,7 +111,7 @@ class DataObject:
         """Calculates vorticity terms."""
         self.Zeta = vorticity(self.u, self.v)
         self.dZdt = dZdt
-        self.AdvHZeta = self.horizontal_vorticity_advection()
+        self.AdvHZeta = self.calculate_horizontal_advection(self.Zeta)
         self.AdvVZeta = - 1 * (self.Zeta.differentiate(self.vertical_level_indexer) * self.Omega) / (1 * units('Pa'))
         self.Beta = (self.f).differentiate(self.latitude_indexer) / self.dy
         self.vxBeta = - 1 * (self.v * self.Beta)
@@ -118,17 +122,28 @@ class DataObject:
         self.SumVorticity = self.AdvHZeta + self.AdvVZeta + self.vxBeta + self.ZetaDivH + self.fDivH + self.Tilting
         self.ResZ = self.dZdt - self.SumVorticity
 
-    def horizontal_temperature_advection(self):
-        """Calculates horizontal temperature advection."""
-        dTdlambda = self.Temperature.differentiate(self.longitude_indexer)
-        dTdphi = self.Temperature.differentiate(self.latitude_indexer)
-        return -1 * ((self.u * dTdlambda / self.dx) + (self.v * dTdphi / self.dy))
+    def calculate_water_budget_terms(self, dQdt):
+        """Calculates water budget terms."""
+        self.dQdt = dQdt
+        self.dQdt_integrated = (self.dQdt.integrate(self.vertical_level_indexer) * units('Pa')) / g
+        self.MFD = self.calculate_horizontal_advection(self.SpecificHumidity)
+        self.MFD_integrated = (self.MFD.integrate(self.vertical_level_indexer) * units('Pa')) / g
+        self.ResQ = self.dQdt_integrated + self.MFD_integrated
 
-    def horizontal_vorticity_advection(self):
-        """Calculates horizontal vorticity advection."""
-        dZdlambda = self.Zeta.differentiate(self.longitude_indexer)
-        dZdphi = self.Zeta.differentiate(self.latitude_indexer)
-        return -1 * ((self.u * dZdlambda / self.dx) + (self.v * dZdphi / self.dy))
+    def calculate_horizontal_advection(self, field):
+        """
+        Calculates horizontal advection for a given field.
+
+        Parameters:
+        - field (xarray.DataArray): The field for which to calculate the advection (e.g., temperature, vorticity, moisture).
+
+        Returns:
+        - xarray.DataArray: The horizontal advection of the given field.
+        """
+        dField_dlambda = field.differentiate(self.longitude_indexer)
+        dField_dphi = field.differentiate(self.latitude_indexer)
+        advection = -1 * ((self.u * dField_dlambda / self.dx) + (self.v * dField_dphi / self.dy))
+        return advection
 
     def tilting_term(self):
         """Calculates the tilting term."""

@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/17 00:36:36 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/19 16:13:37 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -86,14 +86,14 @@ def CalcAreaAverage(VariableData, ZonalAverage=False):
         VariableData['rlats'][-1]) - np.sin(VariableData['rlats'][0])
     return (ZA * ZA["coslats"]).integrate("rlats") / ylength
 
-def perform_calculations(input_data, namelist_df, dTdt, dZdt, args, app_logger, *outputs):
+def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_logger, *outputs):
     """
     Performs meteorological calculations on input data and generates results and figures.
 
     Parameters:
     - input_data (xr.Dataset): Dataset containing meteorological data from a NetCDF file.
     - namelist_df (pd.DataFrame): DataFrame mapping variable names.
-    - dTdt, dZdt: Data arrays representing temperature and vortcity tendencies, respectively.
+    - dTdt, dZdt, dQdt: Data arrays representing temperature, vortcity and moisture tendencies, respectively.
     - args: Command-line arguments or parameters specifying calculation options.
     - app_logger (Logger): Logger for outputting information and error messages.
     - outputs (tuple): A tuple containing paths for results and figures directories, and the output file name.
@@ -129,7 +129,8 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, args, app_logger, 
     # Create a dictionary for saving area averages of each term
     stored_terms = ['AdvHTemp','AdvVTemp', 'Sigma','Omega','dTdt','ResT', 
                     'Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
-                   'ZetaDivH','fDivH', 'Tilting', 'ResZ'] 
+                    'ZetaDivH','fDivH', 'Tilting', 'ResZ',
+                    'dQdt', 'MFD', 'ResQ'] 
     
     # Create a dataframe for each term
     results_df_dictionary = {}
@@ -160,6 +161,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, args, app_logger, 
             input_data.sel({time_indexer:t_naive}),
             dTdt=dTdt.sel({time_indexer:t_naive}),
             dZdt=dZdt.sel({time_indexer:t_naive}),
+            dQdt=dQdt.sel({time_indexer:t_naive}),
             namelist_df=namelist_df,
             app_logger=app_logger,
             args=args)
