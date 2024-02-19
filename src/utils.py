@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/17 00:36:36 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/19 15:04:37 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -201,7 +201,7 @@ def slice_domain(input_data, args, namelist_df):
     vertical_level_indexer = namelist_df.loc['Vertical Level']['Variable']
     
     if args.fixed:
-        dfbox = pd.read_csv('../inputs/box_limits',header=None,
+        dfbox = pd.read_csv('inputs/box_limits',header=None,
                             delimiter=';',index_col=0)
         WesternLimit = float(input_data[longitude_indexer].sel(
             {longitude_indexer:float(dfbox.loc['min_lon'].values)},

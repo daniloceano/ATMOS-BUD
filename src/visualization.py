@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/11 16:54:18 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/17 00:06:56 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/19 17:00:20 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,6 +24,7 @@ Contact:
 """
 import os 
 import cmocean.cm as cmo
+import datetime
 import pandas as pd
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
@@ -109,7 +110,9 @@ def plot_fixed_domain(limits, data850, results_subdirectory, time, app_logger):
     gl.ylabel_style = {'size': 16}
 
     # Add title
-    plt.title('Box defined for computations\n', fontsize=22)
+    datestr = datetime.datetime.strptime(time, '%Y%m%d%H%M')
+    timestr = datestr.strftime('%Y-%m-%d %H:%MZ')
+    plt.title(f'Box defined for computations\n' f'{timestr}\n', fontsize=22)
 
     # Plot central point, mininum vorticity, minimum hgt and maximum wind 
     plot_zeta(ax, data850['min_max_zeta_850']['data'], data850['lat'], data850['lon'], data850['min_hgt']['data'])
