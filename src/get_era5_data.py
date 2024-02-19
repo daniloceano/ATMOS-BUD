@@ -27,7 +27,8 @@ c.retrieve(
         'time':'00/to/23/by/1', # "by/1" means downloading hourly data
         'variable':[
             'geopotential','vertical_velocity',
-            'temperature','u_component_of_wind','v_component_of_wind'
+            'temperature','u_component_of_wind',
+            'v_component_of_wind', 'specific_humidity'
         ]
     },
     'outfile.nc') # Output file name
