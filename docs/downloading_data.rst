@@ -54,6 +54,7 @@ Method 1: Copernicus Interface
 
 9. After all selections have been made, submit the data retrieval request. You will receive the dataset in the specified format once the request has been processed.
 
+10. Once you have downloaded the dataset, it is advisable to rename the file for easier identification and organization. Use a convention that includes the system identifier and dataset name, such as ``system-identifier_dataset-name.nc``. For example, rename your downloaded file to ``system-20050808_ERA5.nc`` to reflect the system date and data source.
 
 Method 2: Automated Download Using `get_era5_data.py`
 ------------------------------------------------------
@@ -84,3 +85,6 @@ The script will automatically communicate with the Copernicus Climate Data Store
 
 .. note::
    Ensure you have the `cdsapi` library installed and configured with your CDS API key before running the script. For more information on setting up `cdsapi`, visit the official `cdsapi` installation guide and user documentation: `https://cds.climate.copernicus.eu/api-how-to`
+
+.. note::
+    The script `get_era5_data.py` includes the option to specify the output file name directly within the script. It is advisable to choose a name that facilitates easy identification and organization of your datasets. We recommend adopting a naming convention that incorporates the system identifier and the dataset name. For example, naming your output file as ``system-20050808_ERA5.nc`` can be beneficial, where ``20050808`` denotes the date of the atmospheric event under analysis, and ``ERA5`` represents the dataset source. This practice ensures your files are organized systematically, enhancing the efficiency of data management and retrieval for future analyses.
