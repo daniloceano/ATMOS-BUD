@@ -6,7 +6,7 @@
 ![Documentation Status](https://readthedocs.org/projects/atmos-bud//badge/?version=latest)
 ![License](https://img.shields.io/github/license/daniloceano/ATMOS-BUD)
 
-<img src="docs/_static/images/logo.png" alt="ATMOS-BUD Logo" width="200"/>
+<img src="docs/_static/images/logo.jpg" alt="ATMOS-BUD Logo" width="200"/>
 
 ATMOS-BUD is a comprehensive software suite designed for calculating heat, vorticity, and moisture balances within limited areas of the atmosphere. Developed at the Institute of Astronomy, Geophysics, and Atmospheric Sciences of the University of São Paulo, it's a key tool for students and researchers in atmospheric sciences.
 
