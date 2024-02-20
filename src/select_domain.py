@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/06 12:33:00 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/17 00:45:15 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/20 17:16:41 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -234,7 +234,10 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
     map_decorators(ax)
 
     # Convert to datetime object
-    date_obj = datetime.strptime(timestr, '%Y-%m-%d %H:%M:%S%z')
+    try:
+        date_obj = datetime.strptime(timestr, '%Y-%m-%d %H:%M:%S%z')
+    except:
+        date_obj = datetime.strptime(timestr, '%Y-%m-%d %H:%M:%S')
     # Format datetime object to desired string format (YYYY-MM-DD HH)
     formatted_date_str = date_obj.strftime('%Y-%m-%d %H')
     
