@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/19 15:04:37 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/20 11:21:09 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -109,6 +109,10 @@ def handle_track_file(input_data, times, longitude_indexer, latitude_indexer, ap
         app_logger.error(f'Error parsing track file: {trackfile}')
         raise
 
+    # Remove timezone information from track index if it's tz-aware
+    if track.index.tz is not None:
+        track.index = track.index.tz_localize(None)
+
     try:
         data_lon_max, data_lon_min = float(input_data[longitude_indexer].max()), float(input_data[longitude_indexer].min())
         data_lat_max, data_lat_min = float(input_data[latitude_indexer].max()), float(input_data[latitude_indexer].min())
@@ -116,6 +120,7 @@ def handle_track_file(input_data, times, longitude_indexer, latitude_indexer, ap
         app_logger.debug(f"Data spatial limits --> lon_min: {data_lon_min:.2f}, lon_max: {data_lon_max:.2f}, lat_min: {data_lat_min:.2f}, lat_max: {data_lat_max:.2f}")
         app_logger.debug(f"Track spatial limits --> lon_min: {track['Lon'].min():.2f}, lon_max: {track['Lon'].max():.2f}, lat_min: {track['Lat'].min():.2f}, lat_max: {track['Lat'].max():.2f}")
 
+        # Check time if track time limits match with data time limits
         if track.index[0] < times.min() or track.index[-1] > times.max():
             app_logger.error("Track time limits do not match with data time limits.")
             raise ValueError("Track time limits do not match with data time limits.")
@@ -252,7 +257,7 @@ def slice_domain(input_data, args, namelist_df):
     
     return input_data
 
-def get_domain_extreme_values(itime, args, min_lat, *slices_850, track=None):
+def get_domain_extreme_values(itime, args, min_lat, slices_850, track=None):
     """
     Retrieves or calculates extreme values (minimum/maximum vorticity, minimum geopotential height,
     and maximum wind speed) within a specified domain at 850 hPa.
