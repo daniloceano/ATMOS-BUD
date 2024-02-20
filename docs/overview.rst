@@ -1,3 +1,8 @@
+.. image:: docs/_static/images/logo.png
+   :alt: ATMOS-BUD logo
+   :align: center
+
+
 Overview
 ========
 
