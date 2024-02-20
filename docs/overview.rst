@@ -21,10 +21,11 @@ Quasi-Geostrophic Thermodynamic Equation
 
 .. math::
 
-   \frac{\partial T}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h T \quad \text{(Horizontal Advection)} \\
-   & - \frac{T \cdot \omega}{\Delta p} \quad \text{(Vertical Advection)} \\
-   & + \sigma \cdot \omega \quad \text{(Diabatic Heating/Cooling)} \\
-   & + \text{Residual} \quad \text{(Residual Term)}
+    \begin{align*}
+    \frac{\partial T}{\partial t} = & \underbrace{-\mathbf{V}_h \cdot \nabla_h T}_{\text{Horizontal Temperature Advection}} \\
+    & \underbrace{- \Sigma \omega}_{\text{Vertical Temperature Advection}} \\
+    & \underbrace{+ Q}_{\text{Diabatic Heating}}
+    \end{align*}
 
 
 Quasi-Geostrophic Vorticity Budget Equation
