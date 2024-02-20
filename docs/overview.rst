@@ -1,4 +1,4 @@
-.. image:: docs/_static/images/logo.jpg
+.. image:: _static/images/logo.jpg
    :alt: ATMOS-BUD logo
    :align: center
 
@@ -26,29 +26,18 @@ Quasi-Geostrophic Thermodynamic Equation
 
 .. math::
 
-    \begin{align*}
-    \frac{\partial T}{\partial t} = & \underbrace{-\mathbf{V}_h \cdot \nabla_h T}_{\text{Horizontal Temperature Advection}} \\
-    & \underbrace{- \Sigma \omega}_{\text{Vertical Temperature Advection}} \\
-    & \underbrace{+ Q}_{\text{Diabatic Heating}}
-    \end{align*}
-
+    \frac{\partial T}{\partial t} = -\mathbf{V}_h \cdot \nabla_h T - \Sigma \omega + Q \quad \text{(Horizontal Temperature Advection, Vertical Temperature Advection, Diabatic Heating)}
 
 Quasi-Geostrophic Vorticity Budget Equation
 -------------------------------------------
 
 .. math::
 
-   \frac{\partial \zeta}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h \zeta \quad \text{(Horizontal Advection)} \\
-   & - \frac{\zeta \omega}{\Delta p} \quad \text{(Vertical Advection)} \\
-   & - \beta v \quad \text{(Beta Term)} \\
-   & - \zeta \nabla \cdot \mathbf{V}_h \quad \text{(Stretching Term)} \\
-   & - f \nabla \cdot \mathbf{V}_h \quad \text{(Divergence Term)} \\
-   & + \left( \frac{\partial \Omega}{\partial y} \frac{\partial u}{\partial p} - \frac{\partial \Omega}{\partial x} \frac{\partial v}{\partial p} \right) \quad \text{(Tilting Term)}
+   \frac{\partial \zeta}{\partial t} = -\mathbf{V}_h \cdot \nabla_h \zeta - \frac{\zeta \omega}{\Delta p} - \beta v - \zeta \nabla \cdot \mathbf{V}_h - f \nabla \cdot \mathbf{V}_h + \left( \frac{\partial \Omega}{\partial y} \frac{\partial u}{\partial p} - \frac{\partial \Omega}{\partial x} \frac{\partial v}{\partial p} \right) \quad \text{(Horizontal Advection, Vertical Advection, Beta Term, Stretching Term, Divergence Term, Tilting Term)}
 
 Water Budget Equation
 ---------------------
 
 .. math::
 
-   \int \frac{\partial q}{\partial t} \, dp = & -\int \mathbf{V}_h \cdot \nabla q \, dp \quad \text{(Integrated Moisture Advection)} \\
-   & + \int S \, dp \quad \text{(Net Source/Sink Term)}
+   \int \frac{\partial q}{\partial t} \, dp = -\int \mathbf{V}_h \cdot \nabla q \, dp + \int S \, dp \quad \text{(Integrated Moisture Advection, Net Source/Sink Term)}
