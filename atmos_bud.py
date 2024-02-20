@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/19 16:11:15 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/20 10:54:35 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -45,7 +45,7 @@ def main():
     
     else:
         # For debuging:
-        debug_args = ['samples/sample1_ERA5.nc', '-f', '-v']
+        debug_args = ['samples/sample1_ERA5.nc', '-t', '-v']
         args = parse_arguments(debug_args)
 
     # Set method

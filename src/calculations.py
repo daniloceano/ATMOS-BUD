@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/19 16:13:37 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/20 11:21:46 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -119,7 +119,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     vertical_level_indexer = namelist_df.loc['Vertical Level']['Variable']
 
     # Data time steps and pressure levels
-    timesteps = pd.to_datetime(input_data[time_indexer].values).tz_localize('UTC')
+    timesteps = pd.to_datetime(input_data[time_indexer].values)
     pres_levels = input_data[vertical_level_indexer].values
 
     # Load track file, if specified, and check for errors
@@ -192,9 +192,9 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         # Get the extreme values at 850 hPa for the current time step
         slices_850 = [izeta_850_slice, ight_850_slice, iwspd_850_slice]
         if 'track' in locals() or 'track' in globals():
-            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values( itime, args, min_lat, *slices_850, track)
+            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values(itime, args, min_lat, slices_850, track)
         else:
-            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values( itime, args, min_lat, *slices_850)
+            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values(itime, args, min_lat, slices_850)
 
         # Find position of the extremes
         lat_slice, lon_slice = izeta_850_slice[latitude_indexer], izeta_850_slice[longitude_indexer]
