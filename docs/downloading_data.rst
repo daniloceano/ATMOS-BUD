@@ -8,13 +8,13 @@ In the following example, we will guide you through the process of downloading d
 Method 1: Copernicus Interface
 -------------------------------
 
-1. Access the Copernicus Climate Data Store (CDS) website at `https://cds.climate.copernicus.eu/#!/home`_. Create an account or log into your existing account.
+1. Access the Copernicus Climate Data Store (CDS) website at `Copernicus CDS <https://cds.climate.copernicus.eu/#!/home>`_. Create an account or log into your existing account.
 
 .. image:: _static/images/tutorial_ERA5_copernicus_1.png
    :align: center
    :alt: Copernicus CDS Home
 
-2. Visit the ERA5 dataset page at `https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview`_ and click on "Download Data".
+2. Visit the ERA5 dataset page at `ERA5 dataset page <https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview>`_ and click on "Download Data".
 
 .. image:: _static/images/tutorial_ERA5_copernicus_2.png
    :align: center
