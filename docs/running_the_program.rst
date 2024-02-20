@@ -28,7 +28,7 @@ To run ATMOS-BUD using the Fixed framework, execute the following command in the
 
 .. code-block:: bash
 
-    python atmos_bud.py -f
+    python atmos_bud.py path-to-file/your_input_file.nc -f
 
 Ensure that the ``namelist`` and ``box_limits`` files are correctly set up in the ``inputs`` directory before running the command. This setup allows for the precise calculation of atmospheric budgets over the defined domain, with results stored in the ``ATMOS-BUD_Results`` directory and accompanying visualizations generated for analysis.
 
@@ -60,7 +60,7 @@ To execute ATMOS-BUD using the Semi-Lagrangian framework, use the ``-t`` flag as
 
 .. code-block:: bash
 
-    python atmos_bud.py -t
+    python atmos_bud.py path-to-file/your_input_file.nc -t
 
 This command instructs ATMOS-BUD to dynamically adjust the analysis domain based on the system's position as defined in the ``inputs/track`` file.
 
@@ -79,3 +79,45 @@ Important Note on Track File Formatting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is crucial for users to be familiar with the formatting requirements of the track file to ensure accurate analysis. Examples of properly formatted track files are provided in the ``inputs/`` directory. Users are encouraged to refer to these examples when preparing their track files for analysis with the Semi-Lagrangian framework. By adhering to the correct format, users can maximize the efficiency and accuracy of their atmospheric system analyses, ensuring that the domain of interest remains centered on the system throughout the analysis period.
+
+Interactive Framework
+---------------------
+
+The Interactive framework within ATMOS-BUD offers an engaging, hands-on approach for analyzing atmospheric systems, allowing users to dynamically choose the analysis domain at each time step. This framework is particularly suitable for instances where datasets are extensive and could impose significant computational demands.
+
+Running the Program with the Interactive Framework
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To execute ATMOS-BUD using the Interactive framework, use the ``-c`` flag as follows:
+
+.. code-block:: bash
+
+    python atmos_bud.py path-to-file/your_input_file.nc -c
+
+This command opens an interactive graphical interface, guiding users through the data subsetting and domain selection processes for each time step based on real-time visualization of atmospheric data.
+
+Initial Data Subsetting
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Upon initiating the Interactive framework, the first step involves data subsetting to define the working domain, optimizing memory usage and computational resources. A window displaying vorticity data at 850 hPa will guide users in selecting the desired domain:
+
+1. A graphical interface will present vorticity data at 850 hPa.
+2. Users can subset the data to their working domain directly through this interface, aiding in the efficient use of computational resources.
+
+Domain Selection for Each Time Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For every time step in the analysis, the program provides an interactive window where users can define the computational domain using their mouse. This step is crucial for tailoring the analysis to specific atmospheric conditions and phenomena:
+
+1. The window displays key atmospheric variables at 850 hPa: vorticity, geopotential height, and wind streamlines.
+2. Instructions on screen will guide users through the process of selecting the computational domain for each time step.
+
+Output and Replicability
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Similar to the Semi-Lagrangian framework, the Interactive framework generates a track file detailing the chosen domain's parameters for each time step. This feature enhances the replicability of the analysis, allowing for future adjustments to the domain by editing the track file.
+
+Leveraging the Interactive Framework
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Interactive framework is designed to offer researchers and students an intuitive and flexible way to engage with atmospheric data. By allowing for dynamic domain selection based on real-time data visualization, it empowers users to conduct detailed and targeted analyses of atmospheric phenomena. Familiarity with the system under study will significantly enhance the ability to choose the most appropriate domain for analysis, leading to more meaningful and accurate results.
