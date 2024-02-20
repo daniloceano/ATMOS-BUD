@@ -83,7 +83,7 @@ It is crucial for users to be familiar with the formatting requirements of the t
 Interactive Framework
 ---------------------
 
-The Interactive framework within ATMOS-BUD offers an engaging, hands-on approach for analyzing atmospheric systems, allowing users to dynamically choose the analysis domain at each time step. This framework is particularly suitable for instances where datasets are extensive and could impose significant computational demands.
+The Interactive framework within ATMOS-BUD offers an engaging, hands-on approach for analyzing atmospheric systems, allowing users to dynamically choose the analysis domain at each time step.
 
 Running the Program with the Interactive Framework
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
