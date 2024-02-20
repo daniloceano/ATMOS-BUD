@@ -9,12 +9,12 @@ sphinx:
 
 # Define the Python version
 python:
-  version: 3.8
+  version: 3.9
 
 # Command to install dependencies
 python:
   install:
-    - requirements: docs/requirements.txt
+    - requirements: requirements.txt
 
 # Optionally specify the documentation build directory
 build:
