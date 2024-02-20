@@ -15,7 +15,6 @@ Welcome to ATMOS-BUD's documentation!
    downloading_data
    running_the_program
    results_and_output
-   troubleshooting_and_faq
    contact_and_support
    license
 
