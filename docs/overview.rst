@@ -1,4 +1,4 @@
-.. image:: docs/_static/images/logo.png
+.. image:: docs/_static/images/logo.jpg
    :alt: ATMOS-BUD logo
    :align: center
 
