@@ -41,5 +41,5 @@ ATMOS-BUD combines academic rigor with practical application, making it a gatewa
 
 ### Full Documentation
 
-The full documentation for ATMOS-BUD can be found on [Read the Docs](https://yourprojectname.readthedocs.io).
+The full documentation for ATMOS-BUD can be found on [Read the Docs](https://atmos-bud.readthedocs.io).
 
