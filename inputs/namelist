@@ -1,11 +1,11 @@
 ;standard_name;Variable;Units
-Air Temperature;air_temperature;TMP_L100;K
-Geopotential Height;geopotential_height;HGT_L100;gpm
-Specific Humidity;specific_humidity;SPF_H_L100;kg/kg
-Omega Velocity;omega;V_VEL_L100;Pa/s
-Eastward Wind Component;eastward_wind;U_GRD_L100;m/s
-Northward Wind Component;northward_wind;V_GRD_L100;m/s
-Longitude;;lon
-Latitude;;lat
+Air Temperature;air_temperature;t;K
+Geopotential;geopotential;z;m**2/s**2
+Specific Humidity;specific_humidity;q;kg/kg
+Omega Velocity;omega;w;Pa/s
+Eastward Wind Component;eastward_wind;u;m/s
+Northward Wind Component;northward_wind;v;m/s
+Longitude;;longitude
+Latitude;;latitude
 Time;;time
-Vertical Level;;level0
+Vertical Level;;level
