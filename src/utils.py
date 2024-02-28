@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/20 11:21:09 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/28 15:03:53 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -204,23 +204,34 @@ def slice_domain(input_data, args, namelist_df):
     latitude_indexer = namelist_df.loc['Latitude']['Variable']
     time_indexer = namelist_df.loc['Time']['Variable']
     vertical_level_indexer = namelist_df.loc['Vertical Level']['Variable']
+
+    # Input data limits
+    input_data_lon_min = input_data[longitude_indexer].min().values
+    input_data_lon_max = input_data[longitude_indexer].max().values
+    input_data_lat_min = input_data[latitude_indexer].min().values
+    input_data_lat_max = input_data[latitude_indexer].max().values
     
     if args.fixed:
-        dfbox = pd.read_csv('inputs/box_limits',header=None,
-                            delimiter=';',index_col=0)
-        WesternLimit = float(input_data[longitude_indexer].sel(
-            {longitude_indexer:float(dfbox.loc['min_lon'].values)},
-            method='nearest'))
-        EasternLimit =float(input_data[longitude_indexer].sel(
-            {longitude_indexer:float(dfbox.loc['max_lon'].values)},
-            method='nearest'))
-        SouthernLimit =float(input_data[latitude_indexer].sel(
-            {latitude_indexer:float(dfbox.loc['min_lat'].values)},
-            method='nearest'))
-        NorthernLimit =float(input_data[latitude_indexer].sel(
-            {latitude_indexer:float(dfbox.loc['max_lat'].values)},
-            method='nearest'))
+        dfbox = pd.read_csv('inputs/box_limits', header=None, delimiter=';', index_col=0)
+        dfbox_min_lon = float(dfbox.loc['min_lon'].values)
+        dfbox_max_lon = float(dfbox.loc['max_lon'].values)
+        dfbox_min_lat = float(dfbox.loc['min_lat'].values)
+        dfbox_max_lat = float(dfbox.loc['max_lat'].values)
         
+        # Check if dfbox limits are within input_data limits
+        if (dfbox_min_lon < input_data_lon_min or dfbox_max_lon > input_data_lon_max or
+            dfbox_min_lat < input_data_lat_min or dfbox_max_lat > input_data_lat_max):
+            raise ValueError("Specified domain limits in 'inputs/box_limits' are outside the range of 'input_data' limits.")
+
+        WesternLimit = float(input_data[longitude_indexer].sel(
+            {longitude_indexer: dfbox_min_lon}, method='nearest'))
+        EasternLimit = float(input_data[longitude_indexer].sel(
+            {longitude_indexer: dfbox_max_lon}, method='nearest'))
+        SouthernLimit = float(input_data[latitude_indexer].sel(
+            {latitude_indexer: dfbox_min_lat}, method='nearest'))
+        NorthernLimit = float(input_data[latitude_indexer].sel(
+            {latitude_indexer: dfbox_max_lat}, method='nearest'))
+
     elif args.track:
         trackfile = 'inputs/track'
         track = pd.read_csv(trackfile,parse_dates=[0],

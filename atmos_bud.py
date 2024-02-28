@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/28 13:32:57 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/28 14:49:16 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -45,7 +45,7 @@ def main():
     
     else:
         # For debuging:
-        debug_args = ['samples/sample1_ERA5.nc', '-c', '-v']
+        # debug_args = ['samples/sample1_ERA5.nc', '-c', '-v']
         debug_args = ['~/Documents/Programs_and_scripts/data_etc/netCDF_files/akara_teste.nc', '-f', '-v']
         args = parse_arguments(debug_args)
 
@@ -79,7 +79,9 @@ def main():
     # Computeterms with temporal dependency
     app_logger.info('Computing zeta and temperature tendencies...')
     dTdt =  input_data[namelist_df.loc['Air Temperature']['Variable']].differentiate(time_indexer, datetime_unit='s') * units('K/s')
-    Zeta = vorticity(input_data[namelist_df.loc['Eastward Wind Component']['Variable']], input_data[namelist_df.loc['Northward Wind Component']['Variable']])          
+    Zeta = vorticity(input_data[namelist_df.loc['Eastward Wind Component']['Variable']],
+                     input_data[namelist_df.loc['Northward Wind Component']['Variable']],
+                     )          
     dZdt = Zeta.differentiate(time_indexer, datetime_unit='s') / units('s')
     dQdt = input_data[namelist_df.loc['Specific Humidity']['Variable']].differentiate(time_indexer, datetime_unit='s') * units('kg/kg/s')
     app_logger.info('Done.')
