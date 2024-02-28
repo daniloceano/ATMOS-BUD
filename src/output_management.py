@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:59:07 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/02/28 13:37:55 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -44,9 +44,9 @@ def manage_output(args, infile, method):
 
    # Backup box_limits and track file for reproducibility
     if args.fixed:
-        backup_file('../inputs/box_limits', results_subdirectory)
+        backup_file('inputs/box_limits', results_subdirectory)
     elif args.track:
-        backup_file('../inputs/track', results_subdirectory)
+        backup_file('inputs/track', results_subdirectory)
 
     return results_subdirectory, figures_subdirectory, outfile_name
 
