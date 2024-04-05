@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/28 13:37:55 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/05 11:23:49 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -82,8 +82,8 @@ def save_results(MovingObj, results_df_dictionary, stored_terms, results_subdire
         term_results = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
         out_nc = xr.merge(term_results)
         fname = os.path.join(results_subdirectory, f'{outfile_name}.nc')
-        out_nc.to_netcdf(fname, mode='w')
-        app_logger.info(f'{fname} created')
+        # out_nc.to_netcdf(fname, mode='w')
+        # app_logger.info(f'{fname} created')
 
         # Save CSV files for each term
         for term, df in results_df_dictionary.items():
