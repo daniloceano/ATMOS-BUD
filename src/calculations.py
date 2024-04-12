@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/20 11:21:46 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/12 08:04:23 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -21,8 +21,9 @@ from src.visualization import plot_fixed_domain
 from src.utils import handle_track_file
 from src.utils import find_extremum_coordinates
 from src.utils import get_domain_extreme_values
-from src.output_management import save_results
 from src.output_management import save_output_track
+from src.output_management import save_results_csv
+from src.output_management import save_results_netcdf
 
 def CalcZonalAverage(VariableData):
     """
@@ -271,10 +272,13 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             'lon': lon,
         }
         plot_fixed_domain(current_domain_limits, dict_for_plot, results_subdirectory, datestr2, app_logger)
-    
-    save_results(MovingObj, results_df_dictionary, stored_terms, results_subdirectory, outfile_name, app_logger)
-        
+
     # Save system position as a csv file for replicability
     if not args.fixed:
         save_output_track(output_track_attributes, results_subdirectory, figures_subdirectory, outfile_name, app_logger)
+    
+    save_results_csv(results_df_dictionary, results_subdirectory, app_logger)
+    save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger)
+        
+
         

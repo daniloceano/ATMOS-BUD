@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/05 11:23:49 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/12 08:04:24 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -65,16 +65,15 @@ def backup_file(source_path, destination_directory):
     except Exception as e:
         print(f"Error backing up file from {source_path} to {destination_directory}: {e}")
 
-def save_results(MovingObj, results_df_dictionary, stored_terms, results_subdirectory, outfile_name, app_logger):
+def save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger):
     """
-    Saves the calculation results to a NetCDF file and CSV files for each term.
+    Saves the calculation results to a NetCDF file.
 
     Parameters:
     - MovingObj: The object containing calculation results.
-    - results_df_dictionary: Dictionary of pandas DataFrames for each term.
     - stored_terms: List of terms to be saved.
     - results_subdirectory: Directory where results will be saved.
-    - outfile_name: Base name for output files.
+    - outfile_name: Base name for the output file.
     - app_logger: Logger for outputting information and error messages.
     """
     try:
@@ -82,14 +81,28 @@ def save_results(MovingObj, results_df_dictionary, stored_terms, results_subdire
         term_results = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
         out_nc = xr.merge(term_results)
         fname = os.path.join(results_subdirectory, f'{outfile_name}.nc')
-        # out_nc.to_netcdf(fname, mode='w')
-        # app_logger.info(f'{fname} created')
+        out_nc.to_netcdf(fname, mode='w')
+        app_logger.info(f'{fname} created')
+    except Exception as e:
+        app_logger.error(f"Error saving NetCDF file: {e}")
 
+def save_results_csv(results_df_dictionary, results_subdirectory, app_logger):
+    """
+    Saves the calculation results to CSV files for each term.
+
+    Parameters:
+    - results_df_dictionary: Dictionary of pandas DataFrames for each term.
+    - results_subdirectory: Directory where results will be saved.
+    - app_logger: Logger for outputting information and error messages.
+    """
+    try:
         # Save CSV files for each term
         for term, df in results_df_dictionary.items():
-            df.to_csv(os.path.join(results_subdirectory, f'{term}.csv'))
+            csv_file_name = os.path.join(results_subdirectory, f'{term}.csv')
+            df.to_csv(csv_file_name)
+            app_logger.info(f'{csv_file_name} created')
     except Exception as e:
-        app_logger.error(f"Error saving results: {e}")
+        app_logger.error(f"Error saving CSV files: {e}")
 
 def save_output_track(output_track_attributes, results_subdirectory, figures_subdirectory, outfile_name, app_logger):
     """
