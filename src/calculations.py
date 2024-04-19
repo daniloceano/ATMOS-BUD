@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/12 08:04:23 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/19 18:53:17 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -249,7 +249,10 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
                 MovingObj.longitude_indexer: slice(WesternLimit,EasternLimit)
                 }
             )
-            results_df_dictionary[term][itime] = CalcAreaAverage(term_sliced, ZonalAverage=True)
+            if term == 'ResQ':
+                results_df_dictionary[term][itime] = float(CalcAreaAverage(term_sliced, ZonalAverage=True))
+            else:
+                results_df_dictionary[term][itime] = CalcAreaAverage(term_sliced, ZonalAverage=True)
             
         # Save figure with box used for computations
         dict_for_plot = {
