@@ -1,10 +1,10 @@
 ;standard_name;Variable;Units
-Air Temperature;air_temperature;T;K
-Geopotential;geopotential;Z;m**2/s**2
-Specific Humidity;specific_humidity;Q;kg/kg
-Omega Velocity;omega;W;Pa/s
-Eastward Wind Component;eastward_wind;U;m/s
-Northward Wind Component;northward_wind;V;m/s
+Air Temperature;air_temperature;t;K
+Geopotential;geopotential;z;m**2/s**2
+Specific Humidity;specific_humidity;q;kg/kg
+Omega Velocity;omega;w;Pa/s
+Eastward Wind Component;eastward_wind;u;m/s
+Northward Wind Component;northward_wind;v;m/s
 Longitude;;longitude
 Latitude;;latitude
 Time;;time
