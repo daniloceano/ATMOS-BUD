@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/19 18:53:17 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/19 21:28:48 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -137,7 +137,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     results_df_dictionary = {}
     for term in stored_terms:
         results_df_dictionary[term] = pd.DataFrame(columns=[str(t) for t in timesteps],
-        index=[float(i) for i in pres_levels])
+                                        index=[float(i) for i in pres_levels])
         results_nc[term] = []
         
     # Dictionary for saving track attributes for each timestep
