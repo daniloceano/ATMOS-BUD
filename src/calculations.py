@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/19 21:28:48 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/21 18:51:25 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -136,8 +136,11 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     # Create a dataframe for each term
     results_df_dictionary = {}
     for term in stored_terms:
-        results_df_dictionary[term] = pd.DataFrame(columns=[str(t) for t in timesteps],
-                                        index=[float(i) for i in pres_levels])
+        if term == 'ResQ':
+            results_df_dictionary[term] = []
+        else:
+            results_df_dictionary[term] = pd.DataFrame(columns=[str(t) for t in timesteps],
+                                            index=[float(i) for i in pres_levels])
         results_nc[term] = []
         
     # Dictionary for saving track attributes for each timestep
@@ -250,10 +253,10 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
                 }
             )
             if term == 'ResQ':
-                results_df_dictionary[term][itime] = float(CalcAreaAverage(term_sliced, ZonalAverage=True))
+                results_df_dictionary[term].append(float(CalcAreaAverage(term_sliced, ZonalAverage=True)))
             else:
                 results_df_dictionary[term][itime] = CalcAreaAverage(term_sliced, ZonalAverage=True)
-            
+
         # Save figure with box used for computations
         dict_for_plot = {
             'min_max_zeta_850': {
