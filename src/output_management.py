@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/19 18:49:47 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/04/26 15:14:09 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -98,6 +98,8 @@ def save_results_csv(results_df_dictionary, results_subdirectory, app_logger):
     try:
         # Save CSV files for each term
         for term, df in results_df_dictionary.items():
+            if term == 'ResQ':
+                df = pd.DataFrame.from_dict(df, orient='index')
             csv_file_name = os.path.join(results_subdirectory, f'{term}.csv')
             df.to_csv(csv_file_name)
             app_logger.info(f'{csv_file_name} created')
