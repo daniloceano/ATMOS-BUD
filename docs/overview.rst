@@ -21,7 +21,7 @@ ATMOS-BUD is engineered with versatility in mind, offering three distinct operat
 
 ATMOS-BUD is more than a software program—it's a gateway to understanding the complex dance of atmospheric dynamics, offering users a rich, intuitive experience for both educational exploration and advanced research.
 
-Quasi-Geostrophic Thermodynamic Equation
+Thermodynamic Equation
 -----------------------------------------
 
 .. math::
@@ -30,7 +30,7 @@ Quasi-Geostrophic Thermodynamic Equation
                                     & - \Sigma \omega & \text{(Vertical Temperature Advection)} \\
                                     & + Q & \text{(Diabatic Heating)}
 
-Quasi-Geostrophic Vorticity Budget Equation
+Vorticity Budget Equation
 -------------------------------------------
 
 .. math::
