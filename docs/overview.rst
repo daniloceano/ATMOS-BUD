@@ -36,11 +36,11 @@ Vorticity Budget Equation
 .. math::
 
    \frac{\partial \zeta}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h \zeta & \text{(Horizontal Advection)} \\
-                                       & - \frac{\zeta \omega}{\Delta p} & \text{(Vertical Advection)} \\
+                                       & - \frac{\zeta \omega}{\partial p} & \text{(Vertical Advection)} \\
                                        & - \beta v & \text{(Beta Term)} \\
                                        & - \zeta \nabla \cdot \mathbf{V}_h & \text{(Stretching Term)} \\
                                        & - f \nabla \cdot \mathbf{V}_h & \text{(Divergence Term)} \\
-                                       & + \left( \frac{\partial \Omega}{\partial y} \frac{\partial u}{\partial p} - \frac{\partial \Omega}{\partial x} \frac{\partial v}{\partial p} \right) & \text{(Tilting Term)}
+                                       & + \left( \frac{\partial \zeta}{\partial y} \frac{\partial u}{\partial p} - \frac{\partial \zeta}{\partial x} \frac{\partial v}{\partial p} \right) & \text{(Tilting Term)}
 
 Water Budget Equation
 ---------------------
