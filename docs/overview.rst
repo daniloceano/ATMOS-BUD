@@ -27,7 +27,7 @@ Thermodynamic Equation
 .. math::
 
     \frac{\partial T}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h T & \text{(Horizontal Temperature Advection)} \\
-                                    & - S_p \omega & \text{(Vertical Temperature Advection)} \\
+                                    & - S_p \omega & \text{(Total Vertical Motion Effect )} \\
                                     & + Q & \text{(Diabatic Heating)}
 
 where:
