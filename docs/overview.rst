@@ -27,10 +27,10 @@ Thermodynamic Equation
 .. math::
 
     \frac{\partial T}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h T & \text{(Horizontal Temperature Advection)} \\
-                                    & - S_p \omega & \text{(Total Vertical Motion Effect )} \\
+                                    & - S_p \omega & \text{(Total Vertical Motion Effect)} \\
                                     & + Q & \text{(Diabatic Heating)}
 
-where:
+where :math:`S_p` is an approximation of the static stability term, given by:
 
 .. math::
 
