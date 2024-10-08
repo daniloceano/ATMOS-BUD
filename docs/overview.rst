@@ -27,8 +27,14 @@ Thermodynamic Equation
 .. math::
 
     \frac{\partial T}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h T & \text{(Horizontal Temperature Advection)} \\
-                                    & - \Sigma \omega & \text{(Vertical Temperature Advection)} \\
+                                    & - S_p \omega & \text{(Vertical Temperature Advection)} \\
                                     & + Q & \text{(Diabatic Heating)}
+
+where:
+
+.. math::
+
+    S_p = \frac{R T}{c_p p} - \frac{\partial T}{\partial p} = - \frac{T}{\theta} \frac{\partial \theta}{\partial p}
 
 Vorticity Budget Equation
 -------------------------------------------
@@ -36,7 +42,7 @@ Vorticity Budget Equation
 .. math::
 
    \frac{\partial \zeta}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h \zeta & \text{(Horizontal Advection)} \\
-                                       & - omega \frac{\partial \zeta}{\partial p} & \text{(Vertical Advection)} \\
+                                       & - \omega \frac{\partial \zeta}{\partial p} & \text{(Vertical Advection)} \\
                                        & - \beta v & \text{(Beta Term)} \\
                                        & - \zeta \nabla \cdot \mathbf{V}_h & \text{(Stretching Term)} \\
                                        & - f \nabla \cdot \mathbf{V}_h & \text{(Divergence Term)} \\
