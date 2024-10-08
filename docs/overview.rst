@@ -36,7 +36,7 @@ Vorticity Budget Equation
 .. math::
 
    \frac{\partial \zeta}{\partial t} = & -\mathbf{V}_h \cdot \nabla_h \zeta & \text{(Horizontal Advection)} \\
-                                       & - \frac{\zeta \omega}{\partial p} & \text{(Vertical Advection)} \\
+                                       & - omega \frac{\partial \zeta}{\partial p} & \text{(Vertical Advection)} \\
                                        & - \beta v & \text{(Beta Term)} \\
                                        & - \zeta \nabla \cdot \mathbf{V}_h & \text{(Stretching Term)} \\
                                        & - f \nabla \cdot \mathbf{V}_h & \text{(Divergence Term)} \\
