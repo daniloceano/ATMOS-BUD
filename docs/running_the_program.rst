@@ -42,7 +42,7 @@ Track File Format
 
 The track file should include the following columns at a minimum:
 
-- Time (formatted as YYYYMMDDHH)
+- Time (formatted as YYYY-MM-DD-HHMM)
 - Latitude (in degrees)
 - Longitude (in degrees)
 
