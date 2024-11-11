@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/28 15:03:53 by daniloceano      ###   ########.fr        #
+#    Updated: 2024/11/11 08:39:16 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -292,7 +292,11 @@ def get_domain_extreme_values(itime, args, min_lat, slices_850, track=None):
         if 'min_max_zeta_850' in track.columns:
             min_max_zeta = float(track.loc[itime]['min_max_zeta_850'])
         else:
-            min_max_zeta = float(izeta_850_slice.min())
+            lat = track.loc[itime]['Lat']
+            if float(lat) < 0:
+                min_max_zeta = float(izeta_850_slice.min())
+            else:
+                min_max_zeta = float(izeta_850_slice.max())
 
         if 'min_hgt_850' in track.columns:
             min_hgt = float(track.loc[itime]['min_hgt_850'])
