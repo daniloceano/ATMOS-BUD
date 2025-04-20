@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 21:32:34 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/19 16:14:53 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/20 20:43:53 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -123,12 +123,32 @@ class DataObject:
         self.ResZ = self.dZdt - self.SumVorticity
 
     def calculate_water_budget_terms(self, dQdt):
-        """Calculates water budget terms."""
+        """
+        Calculates the atmospheric water budget terms:
+        - Time derivative of specific humidity (dQdt)
+        - Horizontal divergence of moisture flux (divQ)
+        - Residual of the water vapor budget (WaterBudgetResidual)
+
+        The water vapor budget equation is:
+            dW/dt + div(Q) = P - E
+
+        Parameters:
+        - dQdt (xarray.DataArray): Time derivative of specific humidity (kg/kg/s)
+
+        Sets:
+        - self.dQdt: input field
+        - self.dQdt_integrated: vertically integrated dQdt (kg/m^2/s)
+        - self.divQ: horizontal divergence of moisture flux (1/s)
+        - self.divQ_integrated: vertically integrated div(Q) (kg/m^2/s)
+        - self.WaterBudgetResidual: dQdt_integrated + divQ_integrated (kg/m^2/s)
+        """
         self.dQdt = dQdt
         self.dQdt_integrated = (self.dQdt.integrate(self.vertical_level_indexer) * units('Pa')) / g
-        self.MFD = self.calculate_horizontal_advection(self.SpecificHumidity)
-        self.MFD_integrated = (self.MFD.integrate(self.vertical_level_indexer) * units('Pa')) / g
-        self.ResQ = self.dQdt_integrated + self.MFD_integrated
+
+        self.divQ = self.calculate_divQ()
+        self.divQ_integrated = (self.divQ.integrate(self.vertical_level_indexer) * units('Pa')) / g
+
+        self.WaterBudgetResidual = self.dQdt_integrated + self.divQ_integrated
 
     def calculate_horizontal_advection(self, field):
         """
@@ -154,3 +174,24 @@ class DataObject:
         dudp = self.u.differentiate(self.vertical_level_indexer) / (1 * units('Pa'))
         dvdp = self.v.differentiate(self.vertical_level_indexer) / (1 * units('Pa'))
         return (dOmegady * dudp) - (dOmegadx * dvdp)
+    
+    def calculate_divQ(self):
+        """
+        Calculates the horizontal divergence of the moisture flux (q * V),
+        which corresponds to the divergence of the vertically integrated
+        water vapor transport in the water vapor budget equation.
+
+        Mathematically:
+            div(Q) = d(q*u)/dx + d(q*v)/dy
+
+        Returns:
+        - xarray.DataArray: Horizontal divergence of moisture flux (1/s)
+        """
+        q_u = self.SpecificHumidity * self.u  # zonal moisture flux
+        q_v = self.SpecificHumidity * self.v  # meridional moisture flux
+
+        dq_u_dx = q_u.differentiate(self.longitude_indexer) / self.dx
+        dq_v_dy = q_v.differentiate(self.latitude_indexer) / self.dy
+
+        divQ = dq_u_dx + dq_v_dy
+        return divQ

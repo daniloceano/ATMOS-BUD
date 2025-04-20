@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/26 15:05:20 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/20 20:47:24 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -131,7 +131,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     stored_terms = ['AdvHTemp','AdvVTemp', 'Sigma','Omega','dTdt','ResT', 
                     'Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
                     'ZetaDivH','fDivH', 'Tilting', 'ResZ',
-                    'dQdt', 'MFD', 'ResQ'] 
+                    'dQdt', 'divQ_integrated', 'WaterBudgetResidual'] 
     
     # Create a dataframe for each term
     results_df_dictionary = {}
