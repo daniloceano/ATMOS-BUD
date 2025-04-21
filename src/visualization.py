@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/11 16:54:18 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/19 17:00:20 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/21 10:16:23 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -243,3 +243,55 @@ def plot_min_max_zeta_hgt(track_plotting, figs_dir, app_logger, max_ticks=10):
         app_logger.info(f"Time series plot created and saved: {filename}")
     except Exception as e:
         app_logger.error(f"Failed to create and save time series plot: {e}")
+
+def hovmoller_mean_zeta(Zeta, figures_subdirectory, app_logger):
+    """
+    Creates and saves a Hovmöller diagram of mean relative vorticity for each pressure level
+    over time within the cyclone domain.
+
+    Parameters:
+    - Zeta (pandas.DataFrame): DataFrame with index as pressure levels (Pa) and columns as timestamps (datetime),
+      containing mean vorticity (1/s) for each level and time.
+    - figures_subdirectory (str): Directory path to save the Hovmöller plot.
+    - app_logger (logging.Logger): Logger object for logging messages.
+
+    Raises:
+    - Exception: If an error occurs during plotting or file saving.
+    """
+    try:
+        os.makedirs(figures_subdirectory, exist_ok=True)
+
+        # Remove colunas completamente vazias (sem dados)
+        Zeta = Zeta.dropna(axis=1, how='all')
+
+        # Criar figura
+        fig, ax = plt.subplots(figsize=(16, 9))
+        c = ax.contourf(Zeta.columns, Zeta.index / 100., Zeta.values * 1e5,
+                        levels=20, cmap=cmo.balance, extend='both')
+
+        # Inverter o eixo vertical para mostrar topo da atmosfera em cima
+        ax.invert_yaxis()
+
+        # Título e rótulos dos eixos
+        ax.set_title('Hovmöller Diagram of Mean Vorticity\n(Cyclone Domain)', fontsize=22)
+        ax.set_xlabel('Time', fontsize=18)
+        ax.set_ylabel('Pressure level (hPa)', fontsize=18)
+
+        # Formatação do eixo de tempo
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %Hh'))
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=10))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha='right')
+
+        # Barra de cores
+        cb = fig.colorbar(c, ax=ax, orientation='vertical', pad=0.02, aspect=40)
+        cb.set_label('Vorticity ($10^{-5}$ s$^{-1}$)', fontsize=16)
+
+        # Salvar figura
+        filename = os.path.join(figures_subdirectory, 'hovmoller_mean_zeta.png')
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close(fig)
+
+        app_logger.info(f'Hovmöller diagram of mean zeta created and saved: {filename}')
+
+    except Exception as e:
+        app_logger.error(f"Failed to create Hovmöller diagram of mean zeta: {e}")
