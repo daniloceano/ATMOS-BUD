@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/20 21:30:11 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/21 10:12:32 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,6 +24,7 @@ from src.utils import get_domain_extreme_values
 from src.output_management import save_output_track
 from src.output_management import save_results_csv
 from src.output_management import save_results_netcdf
+from src.visualization import hovmoller_mean_zeta
 
 def CalcZonalAverage(VariableData):
     """
@@ -150,7 +151,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     for key in results_keys:
         output_track_attributes[key] =  []
     
-    for time_step in timesteps:
+    for time_step in timesteps[:3]:
         
         itime = str(time_step)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
@@ -282,7 +283,8 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     # Save system position as a csv file for replicability
     if not args.fixed:
         save_output_track(output_track_attributes, results_subdirectory, figures_subdirectory, outfile_name, app_logger)
-    
+        hovmoller_mean_zeta(results_df_dictionary['Zeta'], figures_subdirectory, app_logger)
+        
     save_results_csv(results_df_dictionary, results_subdirectory, app_logger)
     save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger)
         
