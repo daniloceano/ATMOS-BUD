@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/21 10:12:32 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/21 10:17:23 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -151,7 +151,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     for key in results_keys:
         output_track_attributes[key] =  []
     
-    for time_step in timesteps[:3]:
+    for time_step in timesteps:
         
         itime = str(time_step)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
