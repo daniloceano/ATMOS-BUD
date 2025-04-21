@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/20 20:47:24 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/20 21:30:11 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -131,7 +131,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     stored_terms = ['AdvHTemp','AdvVTemp', 'Sigma','Omega','dTdt','ResT', 
                     'Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
                     'ZetaDivH','fDivH', 'Tilting', 'ResZ',
-                    'dQdt', 'divQ_integrated', 'WaterBudgetResidual'] 
+                    'dQdt', 'dQdt_integrated', 'divQ', 'divQ_integrated', 'WaterBudgetResidual', 'WaterBudgetResidual_integrated'] 
     
     # Create a dataframe for each term
     results_df_dictionary = {}
@@ -252,7 +252,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
                 MovingObj.longitude_indexer: slice(WesternLimit,EasternLimit)
                 }
             )
-            if term == 'ResQ':
+            if term in ['divQ_integrated', 'dQdt_integrated', 'WaterBudgetResidual_integrated']:
                 results_df_dictionary[term][itime] = float(CalcAreaAverage(term_sliced, ZonalAverage=True))
             else:
                 results_df_dictionary[term][itime] = CalcAreaAverage(term_sliced, ZonalAverage=True)
