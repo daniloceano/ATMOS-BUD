@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 21:32:34 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/20 20:43:53 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/20 21:18:49 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -148,7 +148,8 @@ class DataObject:
         self.divQ = self.calculate_divQ()
         self.divQ_integrated = (self.divQ.integrate(self.vertical_level_indexer) * units('Pa')) / g
 
-        self.WaterBudgetResidual = self.dQdt_integrated + self.divQ_integrated
+        self.WaterBudgetResidual = self.dQdt + self.divQ
+        self.WaterBudgetResidual_integrated = self.dQdt_integrated + self.divQ_integrated
 
     def calculate_horizontal_advection(self, field):
         """

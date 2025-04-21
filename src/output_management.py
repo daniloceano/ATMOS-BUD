@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/26 15:14:09 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/20 21:28:02 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -29,13 +29,19 @@ def manage_output(args, infile, method):
     - Tuple containing paths for results subdirectory, figures subdirectory, and the output file name.
     """   
 
-    results_main_directory = '../ATMOS-BUD_Results/'
+    results_main_directory = './Results/'
     outfile_name = args.outname if args.outname else ''.join(infile.split('/')[-1].split('.nc')) + '_' + method
     results_subdirectory = os.path.join(results_main_directory, outfile_name)
     figures_subdirectory = os.path.join(results_subdirectory, 'Figures')
 
+    # Create subdirectories for heat, moisture, and vorticity terms
+    heat_subdirectory = os.path.join(results_subdirectory, 'heat_terms')
+    moisture_subdirectory = os.path.join(results_subdirectory, 'moisture_terms')
+    vorticity_subdirectory = os.path.join(results_subdirectory, 'vorticity_terms')
+
     # Create necessary directories
-    for directory in [results_main_directory, results_subdirectory, figures_subdirectory]:
+    for directory in [results_main_directory, results_subdirectory, figures_subdirectory,
+                      heat_subdirectory, moisture_subdirectory, vorticity_subdirectory]:
         try:
             os.makedirs(directory, exist_ok=True)
         except Exception as e:
@@ -98,9 +104,22 @@ def save_results_csv(results_df_dictionary, results_subdirectory, app_logger):
     try:
         # Save CSV files for each term
         for term, df in results_df_dictionary.items():
+
             if term == 'ResQ':
                 df = pd.DataFrame.from_dict(df, orient='index')
-            csv_file_name = os.path.join(results_subdirectory, f'{term}.csv')
+
+            if term in ['AdvHTemp','AdvVTemp', 'Sigma','Omega','dTdt','ResT']:
+                budget_results_subdirectory = os.path.join(results_subdirectory, 'heat_terms')
+            elif term in ['Zeta', 'dZdt','AdvHZeta','AdvVZeta', 'vxBeta',
+                    'ZetaDivH','fDivH', 'Tilting', 'ResZ']:
+                budget_results_subdirectory = os.path.join(results_subdirectory, 'vorticity_terms')
+            elif term in ['dQdt', 'dQdt_integrated', 'divQ', 'divQ_integrated', 'WaterBudgetResidual', 'WaterBudgetResidual_integrated']:
+                budget_results_subdirectory = os.path.join(results_subdirectory, 'moisture_terms')
+            else:
+                app_logger.error(f"Unknown term: {term}. Saving to main directory.")
+                budget_results_subdirectory = results_subdirectory
+
+            csv_file_name = os.path.join(budget_results_subdirectory, f'{term}.csv')
             df.to_csv(csv_file_name)
             app_logger.info(f'{csv_file_name} created')
     except Exception as e:
