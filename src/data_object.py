@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 21:32:34 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/20 21:18:49 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/04/22 09:08:32 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -55,7 +55,15 @@ class DataObject:
             raise
 
     def extract_variables(self, input_data, namelist_df, args):
-        """Extracts variables from the input dataset and converts them to the appropriate units."""
+        """
+        Extracts variables from the input dataset using the mapping provided in the namelist DataFrame.
+        Converts units, defines coordinates, and prepares variables for later computations.
+
+        Parameters:
+        - input_data (xr.Dataset): Input dataset containing raw meteorological variables.
+        - namelist_df (pd.DataFrame): DataFrame mapping standardized variable names to dataset variables and units.
+        - args (argparse.Namespace): Command-line arguments with configuration options.
+        """
         self.input_data = input_data.load() if args.gfs else input_data
 
         # Extract indexers using namelist DataFrame
@@ -77,11 +85,28 @@ class DataObject:
         self.calculate_additional_properties()
 
     def convert_units(self, var_name, namelist_df):
-        """Converts variable units based on namelist_df."""
+        """
+        Converts the units of a variable from the dataset based on definitions in the namelist DataFrame.
+
+        Parameters:
+        - var_name (str): Standardized name of the variable to extract and convert.
+        - namelist_df (pd.DataFrame): DataFrame with variable mappings and units.
+
+        Returns:
+        - xarray.DataArray: The variable with appropriate physical units.
+        """
         return self.input_data[namelist_df.loc[var_name]['Variable']] * units(namelist_df.loc[var_name]['Units']).to(units.parse_units(namelist_df.loc[var_name]['Units']))
 
     def calculate_geopotential_height(self, namelist_df):
-        """Calculates geopotential height from geopotential if necessary."""
+        """
+        Retrieves geopotential height if available, otherwise calculates it from geopotential.
+
+        Parameters:
+        - namelist_df (pd.DataFrame): DataFrame containing variable mapping and unit definitions.
+
+        Returns:
+        - xarray.DataArray: Geopotential height (in meters).
+        """
         if 'Geopotential Height' in namelist_df.index:
             return self.convert_units('Geopotential Height', namelist_df)
         else:
@@ -89,7 +114,14 @@ class DataObject:
             return geopotential / g
 
     def calculate_additional_properties(self):
-        """Calculates additional properties such as dx, dy, and Coriolis parameter."""
+        """
+        Computes grid spacing (dx, dy) in meters and Coriolis parameter (f) for each latitude.
+        Also stores coordinate variables for future use.
+
+        Sets:
+        - self.dx, self.dy (xarray.DataArray): Grid spacing in x and y directions.
+        - self.f (xarray.DataArray): Coriolis parameter (1/s).
+        """
         self.lons = self.input_data[self.longitude_indexer]
         self.lats = self.input_data[self.latitude_indexer]
         self.cos_lats = np.cos(np.deg2rad(self.lats))
@@ -98,7 +130,31 @@ class DataObject:
         self.f = coriolis_parameter(self.lats)
 
     def calculate_thermodynamic_terms(self, dTdt):
-        """Calculates thermodynamic terms."""
+        """
+        Calculates the atmospheric thermodynamic budget terms:
+        - Horizontal and vertical advection of temperature
+        - Sigma term related to adiabatic processes
+        - Residual of the thermodynamic equation
+        - Estimated diabatic heating (Q) from the residual
+
+        The thermodynamic budget equation is:
+            dT/dt = - (u · ∇T) - ω * ∂T/∂p + (θ/T) * ∂θ/∂p * ω + Q/Cp_d
+
+        Where the residual is used to estimate:
+            Q = Cp_d * ResT
+
+        Parameters:
+        - dTdt (xarray.DataArray): Time derivative of temperature (K/s)
+
+        Sets:
+        - self.dTdt: input field
+        - self.Theta: potential temperature (K)
+        - self.AdvHTemp: horizontal advection of temperature (K/s)
+        - self.AdvVTemp: vertical advection of temperature (K/s)
+        - self.Sigma: static stability term (K/Pa)
+        - self.ResT: residual of the thermodynamic equation (K/s)
+        - self.AdiabaticHeating: estimated diabatic heating (W/kg)
+        """
         self.Theta = potential_temperature(self.Pressure, self.Temperature)
         self.dTdt = dTdt
         self.AdvHTemp = self.calculate_horizontal_advection(self.Temperature)
@@ -108,7 +164,36 @@ class DataObject:
         self.AdiabaticHeating = self.ResT * Cp_d
 
     def calculate_vorticity_terms(self, dZdt):
-        """Calculates vorticity terms."""
+        """
+        Calculates the atmospheric vorticity budget terms:
+        - Horizontal and vertical advection of relative vorticity
+        - Meridional advection of planetary vorticity (β effect)
+        - Divergence-related terms (ζ·divV and f·divV)
+        - Tilting term
+        - Residual of the vorticity equation
+
+        The vorticity budget equation is:
+            dζ/dt = - (u · ∇ζ) - ω * ∂ζ/∂p - v * β - ζ * div(V) - f * div(V) + Tilting
+
+        The residual is calculated as:
+            ResZ = dZdt - [AdvHZeta + AdvVZeta + vxBeta + ZetaDivH + fDivH + Tilting]
+
+        Parameters:
+        - dZdt (xarray.DataArray): Time derivative of relative vorticity (1/s²)
+
+        Sets:
+        - self.Zeta: relative vorticity (1/s)
+        - self.dZdt: input field
+        - self.AdvHZeta: horizontal advection of vorticity (1/s²)
+        - self.AdvVZeta: vertical advection of vorticity (1/s²)
+        - self.Beta: meridional gradient of Coriolis parameter (1/m/s)
+        - self.vxBeta: meridional advection of planetary vorticity (1/s²)
+        - self.DivH: horizontal divergence of the wind (1/s)
+        - self.ZetaDivH: term ζ·div(V) (1/s²)
+        - self.fDivH: term f·div(V) (1/s²)
+        - self.Tilting: tilting term (1/s²)
+        - self.ResZ: residual of the vorticity budget (1/s²)
+        """
         self.Zeta = vorticity(self.u, self.v)
         self.dZdt = dZdt
         self.AdvHZeta = self.calculate_horizontal_advection(self.Zeta)
@@ -167,7 +252,13 @@ class DataObject:
         return advection
 
     def tilting_term(self):
-        """Calculates the tilting term."""
+        """
+        Calculates the tilting term in the vorticity budget equation,
+        related to the vertical shear of horizontal wind and horizontal gradients of Omega.
+
+        Returns:
+        - xarray.DataArray: Tilting contribution (1/s²)
+        """
         dOmegalambda = self.Omega.differentiate(self.longitude_indexer)
         dOmegadphi = self.Omega.differentiate(self.latitude_indexer)
         dOmegady = dOmegalambda / self.dy
