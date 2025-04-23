@@ -32,6 +32,8 @@ The tool supports fixed and moving analysis windows (semi-Lagrangian mode), allo
 
 # Statement of need
 
+The analysis of heat, vorticity, and water budgets is a powerful tool for diagnosing the dynamical and thermodynamical forcings that drive the development of various atmospheric systems [@shu2022vorticity;sun2024comparison], particularly cyclones, whether extratropical [@liou1987heat], subtropical [@dutra2017structure], or tropical [@raymond2011vorticity].
+
 There is a lack of streamlined and open-source tools for diagnosing atmospheric budgets with temporal continuity and multi-level integration, especially for studies involving system tracking or dynamically evolving regions. While numerical models compute these tendencies internally, researchers often lack access to component terms such as horizontal/vertical advection, diabatic heating, tilting, and divergence-related effects.
 
 ATMOS-BUD fills this gap by offering:
