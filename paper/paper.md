@@ -26,18 +26,9 @@ date: 2025-04-22
 
 # Summary
 
-ATMOS-BUD is a flexible and open-source Python package designed to compute and visualize the main components of atmospheric heat, vorticity, and water vapor budgets in pressure coordinates. It provides a structured and modular pipeline to process meteorological datasets, particularly reanalyses such as ERA5 or model output, and compute budget residuals using a quasi-geostrophic framework. 
-
-The tool supports fixed and moving analysis windows (semi-Lagrangian mode), allowing users to diagnose and track synoptic and mesoscale systems such as cyclones. ATMOS-BUD facilitates both operational diagnostics and academic research, with clearly documented routines and outputs in CSV, NetCDF, and figure formats.
-
 # Statement of need
 
-There is a lack of streamlined and open-source tools for diagnosing atmospheric budgets with temporal continuity and multi-level integration, especially for studies involving system tracking or dynamically evolving regions. While numerical models compute these tendencies internally, researchers often lack access to component terms such as horizontal/vertical advection, diabatic heating, tilting, and divergence-related effects.
-
-ATMOS-BUD fills this gap by offering:
-- A reproducible framework for isolating and visualizing key dynamical and thermodynamical processes,
-- Multi-framework support (fixed box, tracking, or interactive selection),
-- Compatibility with standard reanalyses and output formats.
+The analysis of heat, vorticity, and water budgets is a powerful tool for diagnosing the dynamical and thermodynamical forcings that drive the development of various atmospheric systems [@shu2022vorticity;sun2024comparison], particularly cyclones, whether extratropical [@liou1987heat], subtropical [@dutra2017structure], or tropical [@raymond2011vorticity]. The heat budget describes the local temperature tendency as the result of three main processes: horizontal advection, adiabatic heating or cooling due to vertical motion, and diabatic heating processes such as latent heat release. The latter is especially important, as it is associated with convection — a key process that fuels the development of systems such as tropical cyclones. In the vorticity budget, the local change in relative vorticity is governed by several mechanisms: horizontal and vertical advection, advection of planetary vorticity, stretching due to mass divergence or convergence, tilting of horizontal vorticity into the vertical, and frictional effects. Lastly, in the water vapor budget, the local change in column-integrated moisture is primarily controlled by two processes: horizontal moisture flux convergence, and net sources or sinks due to surface evaporation and precipitation.
 
 # Description
 
@@ -57,3 +48,7 @@ Studying tropical and extratropical cyclones
 Analyzing forecast model output or reanalysis
 Teaching atmospheric dynamics and budgets
 The modular structure enables extensions for other vertical coordinates or additional budget terms.
+
+# External Libraries Used
+
+# Acknowledgements
