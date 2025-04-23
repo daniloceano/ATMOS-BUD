@@ -1,26 +1,37 @@
-name: Draft PDF
+name: Compile JOSS Paper PDF
 
 on:
   push:
     paths:
       - paper/**
-      - .github/workflows/draft-pdf.yml
+      - .github/workflows/compile-joss-paper.yml
 
 jobs:
-  paper:
+  build-paper:
+    name: Build paper with lualatex
     runs-on: ubuntu-latest
-    name: Paper Draft
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build draft PDF
-        uses: openjournals/openjournals-draft-action@master
-        with:
-          journal: joss
-          paper-path: paper/paper.md
+      - name: Set up LaTeX
+        run: sudo apt-get update && sudo apt-get install -y texlive-full
 
-      - name: Upload
+      - name: Install Pandoc and citeproc
+        run: sudo apt-get install -y pandoc
+
+      - name: Compile paper with Pandoc using lualatex
+        run: |
+          cd paper
+          pandoc paper.md \
+            --from markdown \
+            --to pdf \
+            --pdf-engine=lualatex \
+            --citeproc \
+            --bibliography=paper.bib \
+            -o paper.pdf
+
+      - name: Upload generated PDF
         uses: actions/upload-artifact@v4
         with:
           name: paper
