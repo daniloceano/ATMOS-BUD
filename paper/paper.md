@@ -17,7 +17,7 @@ authors:
     orcid: 0000-0002-8795-1700
     affiliation: 2
 affiliations:
-  - name: IRB Brasil RE & Universidade de São Paulo (USP), São Paulo, Brazil
+  - name:  Universidade de São Paulo (USP), Instituto de Astronomia, Geofísica e Ciências Atmosféricas (IAG), São Paulo, Brazil & Climate Risk Initiative, IRB(re), Rio de Janeiro, Brazil
     index: 1
   - name: Universidade de São Paulo (USP), Instituto de Astronomia, Geofísica e Ciências Atmosféricas (IAG), São Paulo, Brazil
     index: 2
