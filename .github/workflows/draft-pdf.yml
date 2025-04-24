@@ -1,29 +1,26 @@
-# .github/workflows/draft-pdf.yml
-name: Draft PDF
+name: Build JOSS Draft PDF
 
 on:
   push:
     paths:
-      - paper/paper.md
-      - paper/paper.bib
+      - paper/**
       - .github/workflows/draft-pdf.yml
 
 jobs:
-  paper:
+  build-pdf:
     runs-on: ubuntu-latest
-    name: Paper Draft
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build draft PDF
-        uses: openjournals/openjournals-draft-action@master
-        with:
-          journal: joss
-          paper-path: paper/paper.md
+      - name: Build draft PDF using Inara (JOSS)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/data \
+            openjournals/inara:latest -o pdf paper/paper.md
 
-      - name: Upload PDF
+      - name: Upload compiled PDF
         uses: actions/upload-artifact@v4
         with:
-          name: paper
+          name: joss-paper
           path: paper/paper.pdf
