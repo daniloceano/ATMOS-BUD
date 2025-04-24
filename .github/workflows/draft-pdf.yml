@@ -1,28 +1,49 @@
-name: Draft PDF
+name: Build JOSS PDF
+
 on:
   push:
     paths:
-      - paper/**
-      - .github/workflows/draft-pdf.yml
+      - "paper/**"
+      - ".github/workflows/joss-pdf.yml"
+  pull_request:
+    paths:
+      - "paper/**"
 
 jobs:
-  paper:
+  build-joss-pdf:
+    name: Compile JOSS PDF with inara
     runs-on: ubuntu-latest
-    name: Paper Draft
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Build draft PDF
-        uses: openjournals/openjournals-draft-action@master
-        with:
-          journal: joss
-          # This should be the path to the paper within your repo.
-          paper-path: paper/paper.md
-      - name: Upload
+
+      - name: Install TeX Live
+        run: sudo apt-get update && sudo apt-get install -y texlive-full latexmk
+
+      - name: Clone inara
+        run: |
+          git clone https://github.com/openjournals/inara.git
+          cd inara
+          make setup
+
+      - name: Copy paper to inara and override defaults
+        run: |
+          mkdir -p inara/ATMOS-BUD/paper
+          cp paper/paper.md inara/ATMOS-BUD/paper/
+          cp paper/paper.bib inara/resources/joss/paper.bib
+          
+          # Editar o defaults.yaml para apontar para o paper.bib certo
+          sed -i 's|bibliography:.*|bibliography: resources/joss/paper.bib|' inara/resources/joss/defaults.yaml
+
+      - name: Build PDF
+        run: |
+          cd inara
+          make tex ARTICLE=ATMOS-BUD/paper/paper.md
+          make pdf ARTICLE=ATMOS-BUD/paper/paper.md
+
+      - name: Upload PDF
         uses: actions/upload-artifact@v4
         with:
-          name: paper
-          # This is the output path where Pandoc will write the compiled
-          # PDF. Note, this should be the same directory as the input
-          # paper.md
-          path: paper/paper.pdf
+          name: joss-paper
+          path: inara/publishing-artifacts/paper.pdf
