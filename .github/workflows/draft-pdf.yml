@@ -1,49 +1,29 @@
-name: Build JOSS PDF
+# .github/workflows/draft-pdf.yml
+name: Draft PDF
 
 on:
   push:
     paths:
-      - "paper/**"
-      - ".github/workflows/joss-pdf.yml"
-  pull_request:
-    paths:
-      - "paper/**"
+      - paper/paper.md
+      - paper/paper.bib
+      - .github/workflows/draft-pdf.yml
 
 jobs:
-  build-joss-pdf:
-    name: Compile JOSS PDF with inara
+  paper:
     runs-on: ubuntu-latest
-
+    name: Paper Draft
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install TeX Live
-        run: sudo apt-get update && sudo apt-get install -y texlive-full latexmk
-
-      - name: Clone inara
-        run: |
-          git clone https://github.com/openjournals/inara.git
-          cd inara
-          make setup
-
-      - name: Copy paper to inara and override defaults
-        run: |
-          mkdir -p inara/ATMOS-BUD/paper
-          cp paper/paper.md inara/ATMOS-BUD/paper/
-          cp paper/paper.bib inara/resources/joss/paper.bib
-          
-          # Editar o defaults.yaml para apontar para o paper.bib certo
-          sed -i 's|bibliography:.*|bibliography: resources/joss/paper.bib|' inara/resources/joss/defaults.yaml
-
-      - name: Build PDF
-        run: |
-          cd inara
-          make tex ARTICLE=ATMOS-BUD/paper/paper.md
-          make pdf ARTICLE=ATMOS-BUD/paper/paper.md
+      - name: Build draft PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper/paper.md
 
       - name: Upload PDF
         uses: actions/upload-artifact@v4
         with:
-          name: joss-paper
-          path: inara/publishing-artifacts/paper.pdf
+          name: paper
+          path: paper/paper.pdf
