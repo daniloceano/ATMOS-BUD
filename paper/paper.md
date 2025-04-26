@@ -21,7 +21,7 @@ affiliations:
     index: 1
   - name: Universidade de São Paulo (USP), Instituto de Astronomia, Geofísica e Ciências Atmosféricas (IAG), São Paulo, Brazil
     index: 2
-date: 2025-04-22
+date: 22 April 2025
 ---
 
 # Summary
