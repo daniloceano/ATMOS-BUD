@@ -9,17 +9,17 @@ tags:
 authors:
   - name: Danilo Couto de Souza
     orcid: 0000-0003-4121-7583
-    affiliation: 1
+    affiliation: "1, 2"
   - name: Pedro Leite da Silva Dias
     orcid: 0000-0002-4051-2962
-    affiliation: 2
+    affiliation: 1
   - name: Ricardo Hallak
     orcid: 0000-0002-8795-1700
-    affiliation: 2
+    affiliation: 1
 affiliations:
-  - name:  Universidade de São Paulo (USP), Instituto de Astronomia, Geofísica e Ciências Atmosféricas (IAG), São Paulo, Brazil & Climate Risk Initiative, IRB(re), Rio de Janeiro, Brazil
+  - name:  Universidade de São Paulo (USP), Instituto de Astronomia, Geofísica e Ciências Atmosféricas (IAG), São Paulo, Brazil & 
     index: 1
-  - name: Universidade de São Paulo (USP), Instituto de Astronomia, Geofísica e Ciências Atmosféricas (IAG), São Paulo, Brazil
+  - name: Climate Risk Initiative, IRB(re), Rio de Janeiro, Brazil
     index: 2
 date: 22 April 2025
 ---
