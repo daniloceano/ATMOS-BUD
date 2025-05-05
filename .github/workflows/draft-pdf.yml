@@ -1,5 +1,9 @@
 name: Compile JOSS Paper
-on: [push]
+on:
+  push:
+    paths:
+      - paper/**
+      - .github/workflows/draft-pdf.yml
 
 jobs:
   paper:
