@@ -22,6 +22,7 @@ affiliations:
   - name: Climate Risk Initiative, IRB(re), Rio de Janeiro, Brazil
     index: 2
 date: 22 April 2025
+bibliography: paper.bib
 ---
 
 # Summary
