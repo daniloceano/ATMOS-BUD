@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/20 21:28:02 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 10:56:27 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -125,12 +125,13 @@ def save_results_csv(results_df_dictionary, results_subdirectory, app_logger):
     except Exception as e:
         app_logger.error(f"Error saving CSV files: {e}")
 
-def save_output_track(output_track_attributes, results_subdirectory, figures_subdirectory, outfile_name, app_logger):
+def save_output_track(output_track_attributes, args, results_subdirectory, figures_subdirectory, outfile_name, app_logger):
     """
     Saves track data to a CSV file and generates track and min/max zeta height plots.
 
     Parameters:
     - output_track_attributes: Dictionary containing track attributes.
+    - args: Command-line arguments or parameters specifying calculation options.
     - results_subdirectory: Directory where the track CSV will be saved.
     - figures_subdirectory: Directory where figures will be saved.
     - outfile_name: Base name for the output track file.
@@ -142,7 +143,7 @@ def save_output_track(output_track_attributes, results_subdirectory, figures_sub
         track_file_path = os.path.join(results_subdirectory, f'{outfile_name}_track.csv')
         track.to_csv(track_file_path, index=False, sep=";")
 
-        plot_track(track, figures_subdirectory, app_logger)
-        plot_min_max_zeta_hgt(track.set_index('time'), figures_subdirectory, app_logger)
+        plot_track(track, args, figures_subdirectory, app_logger)
+        plot_min_max_zeta_hgt(track.set_index('time'), args, figures_subdirectory, app_logger)
     except Exception as e:
         app_logger.error(f"Error saving output track: {e}")

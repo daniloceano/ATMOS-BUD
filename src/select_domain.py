@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/06 12:33:00 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/20 17:16:41 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 10:25:11 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -120,7 +120,7 @@ def map_decorators(ax):
     gl.top_labels = None
     gl.right_labels = None
     
-def plot_min_max_zeta(ax, zeta, lat, lon, limits):
+def plot_min_max_zeta(ax, zeta, lat, lon, limits, args):
     """
     Plots the minimum or maximum zeta point within a specified domain.
 
@@ -130,13 +130,15 @@ def plot_min_max_zeta(ax, zeta, lat, lon, limits):
     - lat: Latitude coordinates.
     - lon: Longitude coordinates.
     - limits: A dictionary with 'min_lon', 'max_lon', 'min_lat', 'max_lat' keys specifying the domain.
+    - args: A Namespace object containing command-line arguments.
     """
     max_lon, min_lon = limits['max_lon'], limits['min_lon']
     max_lat, min_lat = limits['max_lat'], limits['min_lat']
     # Plot mininum zeta point whithin box
     izeta = zeta.sel({lon.dims[0]:slice(min_lon,max_lon),
                     lat.dims[0]:slice(min_lat,max_lat)})
-    if float(min_lat) < 0:
+    # Select min or max
+    if args.track_vorticity == "min":
         min_max_zeta = izeta.min()
     else:
         min_max_zeta = izeta.max()
@@ -207,7 +209,7 @@ def initial_domain(zeta, lat, lon):
         
     return limits
 
-def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
+def draw_box_map(u, v, zeta, hgt, lat, lon, timestr, args):
     """
     Draws a map with streamlines and allows for the interactive selection of a domain.
 
@@ -219,6 +221,7 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
     - lat: Latitude coordinates.
     - lon: Longitude coordinates.
     - timestr: The timestep as a string for display.
+    - args: Command-line arguments.
 
     Returns:
     - limits: A dictionary with the selected domain's limits.
@@ -261,7 +264,7 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
         limits = {'min_lon':min_lon,'max_lon':max_lon,
                 'min_lat':min_lat, 'max_lat':max_lat}
         draw_box(ax, limits, crs_longlat)
-        plot_min_max_zeta(ax, zeta, lat, lon, limits)
+        plot_min_max_zeta(ax, zeta, lat, lon, limits, args)
     
         tellme('Happy? Key press any keyboard key for yes, mouse click for no')
         
@@ -271,19 +274,19 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr):
         
     return limits
 
-def get_domain_limits(args, *variables_at_850hpa, track=None):
+def get_domain_limits(args, *variables_at_plevel, track=None):
     """
     Determines the domain limits based on track data or user selection.
 
     Parameters:
     - args: Command-line arguments or options.
-    - variables_at_850hpa: A tuple containing meteorological variables at 850 hPa.
+    - variables_at_plevel: A tuple containing meteorological variables at chosen pressure level.
     - track: Optional DataFrame containing track data for domain selection.
 
     Returns:
     - current_domain_limits: A dictionary with the calculated domain limits.
     """
-    iu_850, iv_850, zeta, ight_850, lat, lon, itime = variables_at_850hpa
+    iu_plevel, iv_plevel, zeta, ight_plevel, lat, lon, itime = variables_at_plevel
 
     if args.track:
         if 'width'in track.columns:
@@ -308,8 +311,8 @@ def get_domain_limits(args, *variables_at_850hpa, track=None):
         
     elif args.choose:
         # Draw maps and ask user to specify corners for specifying the box
-        limits = draw_box_map(iu_850, iv_850, zeta, ight_850,
-                            lat, lon, itime)
+        limits = draw_box_map(iu_plevel, iv_plevel, zeta, ight_plevel,
+                            lat, lon, itime, args)
         
         # Store system position and attributes
         min_lon, max_lon = limits['min_lon'],  limits['max_lon']

@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2024/04/21 17:55:36 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 11:07:16 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -46,8 +46,7 @@ def main():
     else:
         # For debuging:
         print('Debug mode')
-        debug_args = ['samples/sample1_ERA5.nc', '-t', '-v']
-        # debug_args = ['~/Documents/Programs_and_scripts/data_etc/netCDF_files/Akara-subset_ERA5.nc', '-t', '-v']
+        debug_args = ['samples/sample1_ERA5.nc', '-t', '-v', '--track_vorticity', 'max']
         args = parse_arguments(debug_args)
 
     # Set method

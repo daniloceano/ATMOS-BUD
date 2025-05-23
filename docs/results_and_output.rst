@@ -3,6 +3,8 @@ Results and Output
 
 Each time **ATMOS-BUD** is executed, it generates a comprehensive set of results organized within a newly created directory inside the ``ATMOS-BUD_Results`` folder, located in the same directory as the main program. The name of each results directory is based on the input filename, appended with ``_method``, where ``method`` refers to the analysis framework used during the run: either ``fixed``, ``track``, or ``choose``, corresponding to the Fixed, Semi-Lagrangian, or Interactive frameworks.
 
+Users may specify both the pressure level (e.g., 700, 850 hPa) at which to track minimum or maximum vorticity/geopotential height, via command-line options. Most diagnostics and outputs reflect these user-defined settings.
+
 Directory Structure and Contents
 --------------------------------
 
@@ -47,23 +49,23 @@ Contains terms related to the vorticity budget:
 
 Visual outputs generated during the run:
 
-- ``timeseries-min_max_zeta_hgt.png``: Time series of the min/max vorticity and minimum geopotential height at 850 hPa  
+- ``timeseries-min_max_zeta_hgt.png``: Time series of the minimum or maximum vorticity and geopotential height at the user-selected pressure level  
 - ``hovmoller_mean_zeta.png``: Hovmöller diagram of mean relative vorticity across pressure levels and time  
 - ``track_boxes.png``: Map showing the cyclone track and dynamically selected analysis boxes *(only for ``track`` and ``choose`` frameworks)*  
 
 ``Figures/boxes/``
 """""""""""""""""""
 
-Contains individual maps for each time step at 850 hPa:
+Contains individual maps for each time step at the user-selected pressure level (default: 850 hPa):
 
-- Shows vorticity, geopotential height, and the selected domain  
-- Marks positions of min/max vorticity, minimum height, and maximum wind speed  
-- Automatically selects minimum vorticity for Southern Hemisphere and maximum for Northern Hemisphere  
+- Displays vorticity, geopotential height, and the selected analysis domain  
+- Marks positions of the minimum or maximum vorticity, minimum or maximum geopotential height, and maximum wind speed, according to user configuration  
+- The tracked extremes (min/max) and the pressure level shown are fully customizable by the user via command-line options  
 
 Track-Related Files *(for ``track`` and ``choose`` frameworks)*
 ---------------------------------------------------------------
 
-- ``<input>_track_track.csv``: CSV with the complete storm track and diagnostic fields per time step  
+- ``<input>_track_track.csv``: CSV with the complete storm track and diagnostic fields per time step, computed at the user-selected pressure level and for the chosen vorticity/geopotential height extreme (min or max) 
 - ``<input>_track.nc``: NetCDF file with the full set of spatial variables over time  
 - ``track``: Auxiliary diagnostic file related to the cyclone track  
 
