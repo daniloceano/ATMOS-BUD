@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 15:09:06 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 09:52:54 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 11:40:01 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -46,6 +46,8 @@ def parse_arguments(custom_args=None):
                    help="Pressure level (in hPa) to show when choosing the domain (default: 850)")
     parser.add_argument("--track_vorticity", choices=["min", "max"], default="min",
                     help="Whether to track the minimum (default) or maximum vorticity.")
+    parser.add_argument("--track_geopotential", choices=["min", "max"], default="min",
+                    help="Whether to track the minimum (default) or maximum geopotential height.")
     parser.add_argument("-g", "--gfs", action='store_true',
                         help="Open multiple GFS files at once using cfgrib engine.")
     parser.add_argument("-o", "--outname", default=False, type=str,

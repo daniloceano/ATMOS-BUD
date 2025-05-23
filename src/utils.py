@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:10:01 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 11:48:20 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -165,11 +165,18 @@ def find_extremum_coordinates(ds_data, lat, lon, variable, args):
     lat_values = lat.values
     lon_values = lon.values
 
-    if (f'{args.track_vorticity}_zeta' in variable) or (f'{args.track_vorticity}_hgt' in variable):
+    if (f'{args.track_vorticity}_zeta' in variable):
         if args.track_vorticity == "min":
             index = np.unravel_index(ds_data.argmin(), ds_data.shape)
         else:
             index = np.unravel_index(ds_data.argmax(), ds_data.shape)
+
+    elif (f'{args.track_geopotential}_hgt' in variable):
+        if args.track_geopotential == "min":
+            index = np.unravel_index(ds_data.argmin(), ds_data.shape)
+        else:
+            index = np.unravel_index(ds_data.argmax(), ds_data.shape)
+
     elif variable == 'max_wind':
         index = np.unravel_index(ds_data.argmax(), ds_data.shape)
     else:
@@ -297,10 +304,10 @@ def get_domain_extreme_values(itime, args, slices_plevel, track=None):
             else:
                 min_max_zeta = float(izeta_plevel_slice.max())
 
-        if f'{args.track_vorticity}_hgt_{args.level}' in track.columns:
-            min_max_hgt = float(track.loc[itime][f'{args.track_vorticity}_hgt_{args.level}'])
+        if f'{args.track_geopotential}_hgt_{args.level}' in track.columns:
+            min_max_hgt = float(track.loc[itime][f'{args.track_geopotential}_hgt_{args.level}'])
         else:
-            if args.track_vorticity == "min":
+            if args.track_geopotential == "min":
                 min_max_hgt = float(ight_plevel_slice.min())
             else:
                 min_max_hgt = float(ight_plevel_slice.max())

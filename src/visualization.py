@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/11 16:54:18 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:01:57 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 11:44:47 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -93,9 +93,6 @@ def plot_fixed_domain(limits, data_plevel, args, results_subdirectory, time, app
     central_lon = (max_lon+min_lon)/2
     central_lat = (max_lat+min_lat)/2
 
-    # Whether to use minimum or maximum vorticity
-    min_max = args.track_vorticity
-
     # Create figure
     plt.close('all')
     fig, ax = plt.subplots(figsize=(8, 8.5), subplot_kw=dict(projection=ccrs.PlateCarree()))
@@ -121,16 +118,16 @@ def plot_fixed_domain(limits, data_plevel, args, results_subdirectory, time, app
     plt.title(f'Box defined for computations at {args.level} hPa\n{timestr}\n', fontsize=22)
 
     # Plot central point, mininum vorticity, minimum hgt and maximum wind 
-    plot_zeta(ax, data_plevel[f'{args.track_vorticity}_zeta_{args.level}']['data'], data_plevel['lat'], data_plevel['lon'], data_plevel[f'{args.track_vorticity}_hgt_{args.level}']['data'])
+    plot_zeta(ax, data_plevel[f'{args.track_vorticity}_zeta_{args.level}']['data'], data_plevel['lat'], data_plevel['lon'], data_plevel[f'{args.track_geopotential}_hgt_{args.level}']['data'])
     map_features(ax)
     Brazil_states(ax, facecolor='None')
 
     # Plot central point, mininum vorticity, minimum hgt and maximum wind
     ax.scatter(central_lon, central_lat,  marker='o', c='#31332e', s=100, zorder=4)
     ax.scatter(data_plevel[f'{args.track_vorticity}_zeta_{args.level}']['longitude'], data_plevel[f'{args.track_vorticity}_zeta_{args.level}']['latitude'],
-                marker='s', c='#31332e', s=100, zorder=4, label=f'{min_max} zeta')
-    ax.scatter(data_plevel[f'{args.track_vorticity}_hgt_{args.level}']['longitude'], data_plevel[f'{args.track_vorticity}_hgt_{args.level}']['latitude'],
-                marker='x', c='#31332e', s=100, zorder=4, label=f'{min_max} hgt')
+                marker='s', c='#31332e', s=100, zorder=4, label=f'{args.track_vorticity} zeta')
+    ax.scatter(data_plevel[f'{args.track_geopotential}_hgt_{args.level}']['longitude'], data_plevel[f'{args.track_geopotential}_hgt_{args.level}']['latitude'],
+                marker='x', c='#31332e', s=100, zorder=4, label=f'{args.track_geopotential} hgt')
     ax.scatter(data_plevel['max_wind']['longitude'], data_plevel['max_wind']['latitude'],
                 marker='^', c='#31332e', s=100, zorder=4, label='max wind')
     plt.legend(loc='upper left', frameon=True, fontsize=14, bbox_to_anchor=(1.1,1.2))
@@ -216,18 +213,15 @@ def plot_min_max_zeta_hgt(track_plotting, args, figs_dir, app_logger, max_ticks=
     
     The function saves the generated plot as a PNG file within the specified directory.
     """
-
-    min_max = args.track_vorticity
-
     try:
         os.makedirs(figs_dir, exist_ok=True)
 
         fig, ax1 = plt.subplots(figsize=(15, 10))
         ax1.plot(pd.to_datetime(track_plotting.index), track_plotting[f'{args.track_vorticity}_zeta_{args.level}'], color='#554348', marker='o',
-                 label=fr'{args.level} hPa {min_max} $\zeta$')
+                 label=fr'{args.level} hPa {args.track_vorticity} $\zeta$')
         ax2 = ax1.twinx()
-        ax2.plot(pd.to_datetime(track_plotting.index), track_plotting[f'{args.track_vorticity}_hgt_{args.level}'], color='#6610F2', marker='s',
-                 label=f'{args.level} hPa {min_max} gh')
+        ax2.plot(pd.to_datetime(track_plotting.index), track_plotting[f'{args.track_geopotential}_hgt_{args.level}'], color='#6610F2', marker='s',
+                 label=f'{args.level} hPa {args.track_geopotential} gh')
         
         # Get handles and labels for each axis
         handles1, labels1 = ax1.get_legend_handles_labels()
@@ -241,14 +235,14 @@ def plot_min_max_zeta_hgt(track_plotting, args, figs_dir, app_logger, max_ticks=
         ax2.legend(combined_handles, combined_labels, loc='best', prop={'size': 18})
         
         # Customize axes and title
-        ax1.set_title(fr'System Track: {min_max} $\zeta$ and Min Geopotential Height at {args.level} hPa', fontsize=22)
+        ax1.set_title(fr'System Track: {args.track_vorticity} $\zeta$ and {args.track_geopotential} Geopotential Height at {args.level} hPa', fontsize=22)
         ax1.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
         ax1.xaxis.set_major_locator(MaxNLocator(max_ticks))
         ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HZ'))
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=20)
         
         # Save the figure
-        filename = os.path.join(figs_dir,f"timeseries_{args.track_vorticity}_zeta_hgt.png")
+        filename = os.path.join(figs_dir,f"timeseries_{args.track_vorticity}_zeta_{args.track_geopotential}_hgt_{args.level}hPa.png")
         plt.savefig(filename, bbox_inches='tight')
         plt.close(fig)
         
