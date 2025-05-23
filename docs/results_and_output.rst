@@ -3,7 +3,7 @@ Results and Output
 
 Each time **ATMOS-BUD** is executed, it generates a comprehensive set of results organized within a newly created directory inside the ``ATMOS-BUD_Results`` folder, located in the same directory as the main program. The name of each results directory is based on the input filename, appended with ``_method``, where ``method`` refers to the analysis framework used during the run: either ``fixed``, ``track``, or ``choose``, corresponding to the Fixed, Semi-Lagrangian, or Interactive frameworks.
 
-Users may specify both the pressure level (e.g., 700, 850 hPa) at which to track minimum or maximum vorticity/geopotential height, via command-line options. Most diagnostics and outputs reflect these user-defined settings.
+Users may specify the pressure level (e.g., 700, 850 hPa) for all analyses, as well as independently select whether to track the minimum or maximum of vorticity and/or geopotential height via command-line options. Most diagnostics and outputs reflect these user-defined settings.
 
 Directory Structure and Contents
 --------------------------------
@@ -49,7 +49,7 @@ Contains terms related to the vorticity budget:
 
 Visual outputs generated during the run:
 
-- ``timeseries-min_max_zeta_hgt.png``: Time series of the minimum or maximum vorticity and geopotential height at the user-selected pressure level  
+- ``timeseries-min_max_zeta_hgt.png``: Time series of the minimum or maximum vorticity and geopotential height (according to user-defined options) at the user-selected pressure level
 - ``hovmoller_mean_zeta.png``: Hovmöller diagram of mean relative vorticity across pressure levels and time  
 - ``track_boxes.png``: Map showing the cyclone track and dynamically selected analysis boxes *(only for ``track`` and ``choose`` frameworks)*  
 

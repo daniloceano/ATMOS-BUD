@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:03:03 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/23 11:48:34 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -146,14 +146,11 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
 
     # Get choosen vertical level from args and convert to Pa
     plevel_Pa = int(args.level) * 100
-
-    # Whether to use minimum or maximum vorticity
-    min_max = args.track_vorticity
         
     # Dictionary for saving track attributes for each timestep
     output_track_attributes = {}
     results_keys = ['time', 'central_lat', 'central_lon', 'length', 'width',
-            f'{args.track_vorticity}_zeta_{args.level}', f'{args.track_vorticity}_hgt_{args.level}', f'max_wind_{args.level}']
+            f'{args.track_vorticity}_zeta_{args.level}', f'{args.track_geopotential}_hgt_{args.level}', f'max_wind_{args.level}']
     for key in results_keys:
         output_track_attributes[key] =  []
 
@@ -210,7 +207,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         # Find position of the extremes
         lat_slice, lon_slice = izeta_plevel_slice[latitude_indexer], izeta_plevel_slice[longitude_indexer]
         min_max_zeta_lat, min_max_zeta_lon = find_extremum_coordinates(izeta_plevel_slice, lat_slice, lon_slice, f'{args.track_vorticity}_zeta_{args.level}', args)
-        min_max_hgt_lat, min_max_hgt_lon = find_extremum_coordinates(ight_plevel_slice, lat_slice, lon_slice, f'{args.track_vorticity}_hgt_{args.level}', args)
+        min_max_hgt_lat, min_max_hgt_lon = find_extremum_coordinates(ight_plevel_slice, lat_slice, lon_slice, f'{args.track_geopotential}_hgt_{args.level}', args)
         max_wind_lat, max_wind_lon = find_extremum_coordinates(iwspd_plevel_slice, lat_slice, lon_slice, 'max_wind', args)
 
         # Print results on screen
@@ -242,14 +239,14 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
 
         app_logger.info(
             f"{int(args.level)} hPa diagnostics --> "
-            f"{min_max} ζ: {min_max_zeta:.2e}, "
-            f"{min_max} geopotential height: {min_max_hgt:.0f}, "
+            f"{args.track_vorticity} ζ: {min_max_zeta:.2e}, "
+            f"{args.track_geopotential} geopotential height: {min_max_hgt:.0f}, "
             f"max wind speed: {max_wind:.2f}"
         )
         app_logger.info(
             f"{int(args.level)} hPa positions (lat/lon) --> "
-            f"{min_max} ζ: {min_max_zeta_lat:.2f}, {min_max_zeta_lon:.2f}, "
-            f"{min_max} geopotential height: {min_max_hgt_lat:.2f}, {min_max_hgt_lon:.2f}, "
+            f"{args.track_vorticity} ζ: {min_max_zeta_lat:.2f}, {min_max_zeta_lon:.2f}, "
+            f"{args.track_geopotential} geopotential height: {min_max_hgt_lat:.2f}, {min_max_hgt_lon:.2f}, "
             f"max wind speed: {max_wind_lat:.2f}, {max_wind_lon:.2f}")
         
         for term in stored_terms:
@@ -271,7 +268,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
                 'longitude': min_max_zeta_lon,
                 'data': zeta
             },
-            f'{args.track_vorticity}_hgt_{args.level}': {
+            f'{args.track_geopotential}_hgt_{args.level}': {
                 'latitude': min_max_hgt_lat,
                 'longitude': min_max_hgt_lon,
                 'data': ight_plevel

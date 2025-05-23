@@ -3,7 +3,7 @@ Running the Program
 
 ATMOS-BUD is designed to analyze the heat, vorticity, and humidity budgets of cyclones, offering three distinct frameworks for setting the analysis domain. Before running the program, ensure you have configured the ``namelist`` file in the ``inputs/namelist``. This file specifies the naming conventions for the variables contained in the NetCDF (``.nc``) file. Examples of ``namelist`` files for ERA5 data are provided, allowing users to copy and adapt them for their specific needs.
 
-**Note:** Users can specify both the pressure level (in hPa) for all diagnostics and visualizations, as well as whether to track the minimum or maximum vorticity/geopotential height, by using the ``--level`` and ``--track-vorticity`` command-line options. All frameworks fully support these options.
+**Note:** Users can specify the pressure level (in hPa) for all diagnostics and visualizations, as well as whether to track the minimum or maximum vorticity and geopotential height, by using the ``--level``, ``--track-vorticity``, and ``--track_geopotential`` command-line options. All frameworks fully support these options.
 
 Positional Arguments
 ---------------------
@@ -18,7 +18,8 @@ Optional Arguments
 - ``-t, --track``: Define the box using a track file specified by the ``inputs/track`` file. The track indicates the central point of the system, and an arbitrary box of 15°x15° is constructed.
 - ``-c, --choose``: For each time step, the user can interactively choose the domain by clicking on the displayed map.
 - ``-l LEVEL, --level LEVEL``: Pressure level (in hPa) at which to perform the analysis and domain selection (default: 850).
-- ``--track-vorticity {min,max}``: Select whether to track the minimum (default) or maximum vorticity/geopotential height for all tracking, diagnostics, and plots.
+- ``--track-vorticity {min,max}``: Select whether to track the minimum (default) or maximum vorticity for all tracking, diagnostics, and plots.
+- ``--track_geopotential {min,max}``: Select whether to track the minimum (default) or maximum geopotential height for all tracking, diagnostics, and plots.
 - ``-g, --gfs``: Open multiple GFS files at once using the cfgrib engine.
 - ``-o OUTNAME, --outname OUTNAME``: Choose a name for saving results (default is the same as infile).
 - ``-v, --verbose``: Show debug messages while running.
@@ -70,9 +71,9 @@ This command instructs ATMOS-BUD to dynamically adjust the analysis domain based
 
 .. code-block:: bash
 
-   python atmos_bud.py your_input_file.nc -t --level 700 --track-vorticity max
+   python atmos_bud.py your_input_file.nc -t --level 700 --track-vorticity max --track_geopotential max
 
-This command instructs ATMOS-BUD to use the Semi-Lagrangian framework, performing all diagnostics and visualizations at the 700 hPa level, and tracking the maximum vorticity and geopotential height values (good for tracking anti-cyclones) within the analysis domain at each time step.
+This command instructs ATMOS-BUD to use the Semi-Lagrangian framework, performing all diagnostics and visualizations at the 700 hPa level, and tracking the maximum vorticity and geopotential height values within the analysis domain at each time step.
 
 Output
 ~~~~~~
