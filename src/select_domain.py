@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/06 12:33:00 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 10:25:11 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/28 08:14:06 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -331,10 +331,10 @@ def get_domain_limits(args, *variables_at_plevel, track=None):
 
     elif args.fixed:
         dfbox = pd.read_csv('inputs/box_limits',header=None, delimiter=';',index_col=0)
-        min_lon = float(lon.sel({lon.name:float(dfbox.loc['min_lon'].values)}, method='nearest'))
-        max_lon = float(lon.sel({lon.name:float(dfbox.loc['max_lon'].values)}, method='nearest'))
-        min_lat = float(lat.sel({lat.name:float(dfbox.loc['min_lat'].values)}, method='nearest'))
-        max_lat = float(lat.sel({lat.name:float(dfbox.loc['max_lat'].values)}, method='nearest'))
+        min_lon = float(lon.sel({lon.name:float(dfbox.loc['min_lon'].values.item())}, method='nearest'))
+        max_lon = float(lon.sel({lon.name:float(dfbox.loc['max_lon'].values.item())}, method='nearest'))
+        min_lat = float(lat.sel({lat.name:float(dfbox.loc['min_lat'].values.item())}, method='nearest'))
+        max_lat = float(lat.sel({lat.name:float(dfbox.loc['max_lat'].values.item())}, method='nearest'))
         current_domain_limits = {
             'min_lon': min_lon,
             'max_lon': max_lon,
