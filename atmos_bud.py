@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:07:16 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/28 08:14:17 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -46,7 +46,7 @@ def main():
     else:
         # For debuging:
         print('Debug mode')
-        debug_args = ['samples/sample1_ERA5.nc', '-t', '-v', '--track_vorticity', 'max']
+        debug_args = ['samples/sample1_ERA5.nc', '-f', '-v', '--track_vorticity', 'max']
         args = parse_arguments(debug_args)
 
     # Set method

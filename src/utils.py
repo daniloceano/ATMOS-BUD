@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:48:20 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/27 23:25:26 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -167,18 +167,19 @@ def find_extremum_coordinates(ds_data, lat, lon, variable, args):
 
     if (f'{args.track_vorticity}_zeta' in variable):
         if args.track_vorticity == "min":
-            index = np.unravel_index(ds_data.argmin(), ds_data.shape)
+            index = np.unravel_index(np.argmin(ds_data.data), ds_data.shape)
+
         else:
-            index = np.unravel_index(ds_data.argmax(), ds_data.shape)
+            index = np.unravel_index(np.argmax(ds_data.data), ds_data.shape)
 
     elif (f'{args.track_geopotential}_hgt' in variable):
         if args.track_geopotential == "min":
-            index = np.unravel_index(ds_data.argmin(), ds_data.shape)
+            index = np.unravel_index(np.argmin(ds_data.data), ds_data.shape)
         else:
-            index = np.unravel_index(ds_data.argmax(), ds_data.shape)
+            index = np.unravel_index(np.argmax(ds_data.data), ds_data.shape)
 
     elif variable == 'max_wind':
-        index = np.unravel_index(ds_data.argmax(), ds_data.shape)
+        index = np.unravel_index(np.argmax(ds_data.data), ds_data.shape)
     else:
         raise ValueError("Invalid variable specified.")
 
