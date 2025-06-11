@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:48:34 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/11 16:24:28 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -154,6 +154,9 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     for key in results_keys:
         output_track_attributes[key] =  []
 
+    # Dictionary for saving data for each timestep
+    results_time_step = {term: [] for term in stored_terms}
+
     for time_step in timesteps:
         
         itime = str(time_step)
@@ -173,6 +176,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             namelist_df=namelist_df,
             app_logger=app_logger,
             args=args)
+    
 
         # Get variables at choosen pressure level for the current time step
         iu_plevel = MovingObj.u.sel({vertical_level_indexer:plevel_Pa})
@@ -283,13 +287,24 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         }
         plot_fixed_domain(current_domain_limits, dict_for_plot, args, results_subdirectory, datestr2, app_logger)
 
+        # For each term, store the results for each timestep 
+        for term in stored_terms:
+            term_data = getattr(MovingObj, term).sel(
+                **{
+                MovingObj.latitude_indexer: slice(SouthernLimit, NorthernLimit),
+                MovingObj.longitude_indexer: slice(WesternLimit, EasternLimit)
+                }
+            )
+            if '_integrated' not in term:
+                results_time_step[term].append(term_data)
+
     # Save system position as a csv file for replicability
     if not args.fixed:
         save_output_track(output_track_attributes, args, results_subdirectory, figures_subdirectory, outfile_name, app_logger)
         hovmoller_mean_zeta(results_df_dictionary['Zeta'], figures_subdirectory, app_logger)
         
     save_results_csv(results_df_dictionary, results_subdirectory, app_logger)
-    save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger)
+    save_results_netcdf(MovingObj, results_time_step, namelist_df, stored_terms, results_subdirectory, outfile_name, app_logger)
         
 
         

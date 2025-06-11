@@ -11,6 +11,7 @@
 # **************************************************************************** #
 
 import xarray as xr
+import pandas as pd
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -18,19 +19,31 @@ import numpy as np
 import cmocean.cm as cmo
 import matplotlib.colors as colors
 
-nc_file = '../Results/Reg1-Representative_NCEP-R2_fixed/Reg1-Representative_NCEP-R2_fixed.nc'
+nc_file = './Results/Reg1-Representative_NCEP-R2_fixed/Reg1-Representative_NCEP-R2_fixed.nc'
 ds = xr.open_dataset(nc_file)
+
+# Open namelist
+namelist = 'inputs/namelist'
+namelist_df = pd.read_csv(namelist, sep=';', index_col=0, header=0)
+
+# Indexers
+longitude_indexer = namelist_df.loc['Longitude']['Variable']
+latitude_indexer = namelist_df.loc['Latitude']['Variable']
+time_indexer = namelist_df.loc['Time']['Variable']
+vertical_level_indexer = namelist_df.loc['Vertical Level']['Variable']
 
 # Open longitude and latitude data
 lons, lats = ds.lon_2, ds.lat_2
 
 # Get data for a specific time and level
-dTdt = ds.dTdt.sel(initial_time0_hours='2005-08-12T12').sel(lv_ISBL3=1000)
+dTdt = ds.dTdt.sel({vertical_level_indexer:1000})
 
+# Get domain limits
+min_lat, max_lat, min_lon, max_lon = ds[latitude_indexer].min(), ds[latitude_indexer].max(), ds[longitude_indexer].min(), ds[longitude_indexer].max()
 
 # Define the projection and extent of the map
 projection = ccrs.PlateCarree()
-extent = [-60, -20, -40, -15]  # [lon_min, lon_max, lat_min, lat_max]
+extent = [min_lon, max_lon, min_lat, max_lat]  # [lon_min, lon_max, lat_min, lat_max]
 
 # Create a new figure
 fig = plt.figure(figsize=(8, 8))
@@ -68,4 +81,5 @@ gl.ylabel_style = {'size': 12, 'color': 'gray'}  # set y-axis label style
 
 
 # Show the plot
+plt.savefig('./Reg1-Representative_NCEP-R2_fixed_dTdt_1000hPa.png')
 plt.show()

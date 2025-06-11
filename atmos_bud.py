@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2025/06/10 21:08:55 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/11 15:30:19 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -46,7 +46,7 @@ def main():
     else:
         # For debuging:
         print('Debug mode')
-        debug_args = ['samples/test_Reg1-Representative_NCEP-R2.nc', '-f', '-v']
+        debug_args = ['samples/Reg1-Representative_NCEP-R2.nc', '-f', '-v']
         args = parse_arguments(debug_args)
 
     # Set method
