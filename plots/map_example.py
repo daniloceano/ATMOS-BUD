@@ -19,7 +19,12 @@ import numpy as np
 import cmocean.cm as cmo
 import matplotlib.colors as colors
 
+###### Inputs ######
+date = '2005-08-12T12'
+level = 1000
 nc_file = './Results/Reg1-Representative_NCEP-R2_fixed/Reg1-Representative_NCEP-R2_fixed.nc'
+
+# Open dataset
 ds = xr.open_dataset(nc_file)
 
 # Open namelist
@@ -36,7 +41,7 @@ vertical_level_indexer = namelist_df.loc['Vertical Level']['Variable']
 lons, lats = ds.lon_2, ds.lat_2
 
 # Get data for a specific time and level
-dTdt = ds.dTdt.sel({vertical_level_indexer:1000})
+dTdt = ds.dTdt.sel({vertical_level_indexer: level, time_indexer: date})
 
 # Get domain limits
 min_lat, max_lat, min_lon, max_lon = ds[latitude_indexer].min(), ds[latitude_indexer].max(), ds[longitude_indexer].min(), ds[longitude_indexer].max()
@@ -67,7 +72,7 @@ ax.add_feature(cfeature.BORDERS)
 ax.add_feature(cfeature.STATES)
 
 # Set the title and axis labels
-ax.set_title(r'$\frac{\partial T}{\partial t}$ 2005-08-12T12 @ 1000 hPa')
+ax.set_title(r'$\frac{\partial T}{\partial t}$ ' + f'{date} @ {level} hPa')
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
 
@@ -81,5 +86,6 @@ gl.ylabel_style = {'size': 12, 'color': 'gray'}  # set y-axis label style
 
 
 # Show the plot
-plt.savefig('./Reg1-Representative_NCEP-R2_fixed_dTdt_1000hPa.png')
+plt.tight_layout()
+plt.savefig('./Reg1-Representative_NCEP-R2_fixed_dTdt_'+date+'_'+str(level)+'hPa.png')
 plt.show()

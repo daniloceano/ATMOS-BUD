@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2025/06/11 17:03:39 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/12 08:28:24 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -71,7 +71,7 @@ def backup_file(source_path, destination_directory):
     except Exception as e:
         print(f"Error backing up file from {source_path} to {destination_directory}: {e}")
 
-def save_results_netcdf(MovingObj, results_time_step, namelist_df, stored_terms, results_subdirectory, outfile_name, app_logger):
+def save_results_netcdf(out_nc, results_subdirectory, outfile_name, app_logger):
     """
     Saves the calculation results to a NetCDF file.
 
@@ -83,66 +83,6 @@ def save_results_netcdf(MovingObj, results_time_step, namelist_df, stored_terms,
     - app_logger: Logger for outputting information and error messages.
     """
     try:
-        app_logger.info('Saving results to NetCDF file...')
-
-        # Prepare the coordinates (time, latitude, longitude, vertical level)
-        time_coords = MovingObj.__getattribute__('AdvHTemp')[namelist_df.loc['Time']['Variable']]
-        lat_coords = MovingObj.__getattribute__('AdvHTemp')[namelist_df.loc['Latitude']['Variable']]
-        lon_coords = MovingObj.__getattribute__('AdvHTemp')[namelist_df.loc['Longitude']['Variable']]
-        lv_coords = MovingObj.__getattribute__('AdvHTemp')[namelist_df.loc['Vertical Level']['Variable']]
-
-        # Create DataArrays for each variable (term)
-        data_arrays = {}
-
-        for term, data_list in results_time_step.items():
-            time_dimension_data = []
-            
-            if '_integrated' not in term:
-                # Ensure data_list is not empty
-                if data_list:
-                    for data in data_list:
-                        # Add the time dimension to each DataArray
-                        time_data = data.expand_dims(dim=namelist_df.loc['Time']['Variable'], axis=0)
-                        time_dimension_data.append(time_data)
-                else:
-                    print(f"Warning: data_list for term '{term}' is empty.")
-            
-            if time_dimension_data:
-                # Stack the time steps along the time dimension to create a 4D DataArray
-                stacked_data = xr.concat(time_dimension_data, dim=namelist_df.loc['Time']['Variable'])
-                stacked_data = stacked_data.values
-                stacked_data = xr.DataArray(
-                    stacked_data,  
-                    dims=["initial_time0_hours", "lv_ISBL3", "lat_2", "lon_2"],  # As dimensões
-                    coords={
-                        'initial_time0_hours': time_coords,
-                        'lv_ISBL3': lv_coords,
-                        'lat_2': lat_coords,
-                        'lon_2': lon_coords
-                    },
-                    name=term  
-                )
-                # Create a DataArray for each variable (term)
-                data_arrays[term] = stacked_data
-            else:
-                print(f"Warning: No data to stack for term '{term}'.")
-
-        # Now, create a final xarray.Dataset by adding each DataArray as a variable
-        final_dataset = xr.Dataset(data_arrays)
-
-        # Add the time and other coordinates to the dataset explicitly
-        final_dataset = final_dataset.assign_coords({
-            'time': time_coords,
-            'lat_2': lat_coords,
-            'lon_2': lon_coords,
-            'lv_ISBL3': lv_coords
-        })
-
-        # Check the final structure of the dataset
-        print(final_dataset)
-
-        term_results = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
-        out_nc = xr.merge(term_results)
         fname = os.path.join(results_subdirectory, f'{outfile_name}.nc')
         out_nc.to_netcdf(fname, mode='w')
         app_logger.info(f'{fname} created')

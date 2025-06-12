@@ -6,12 +6,13 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/06/11 16:24:28 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/12 15:35:17 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 from metpy.calc import wind_speed
 
@@ -154,9 +155,6 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
     for key in results_keys:
         output_track_attributes[key] =  []
 
-    # Dictionary for saving data for each timestep
-    results_time_step = {term: [] for term in stored_terms}
-
     for time_step in timesteps:
         
         itime = str(time_step)
@@ -287,16 +285,21 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         }
         plot_fixed_domain(current_domain_limits, dict_for_plot, args, results_subdirectory, datestr2, app_logger)
 
-        # For each term, store the results for each timestep 
-        for term in stored_terms:
-            term_data = getattr(MovingObj, term).sel(
-                **{
-                MovingObj.latitude_indexer: slice(SouthernLimit, NorthernLimit),
-                MovingObj.longitude_indexer: slice(WesternLimit, EasternLimit)
-                }
-            )
-            if '_integrated' not in term:
-                results_time_step[term].append(term_data)
+        if args.save_nc_file:
+            # Initializing out_nc on the first time step
+            if time_step == timesteps[0]:
+                # Create the first Dataset with the terms' variables
+                results_ds = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
+                out_nc = xr.merge(results_ds)  # Merge the initial variables
+                app_logger.debug(f"Created Xarray dataset for {datestr}")
+
+            else:
+                # For subsequent time steps, create results_ds and concatenate along the 'time' dimension
+                results_ds = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
+                # Concatenate results_ds along the 'time' dimension
+                out_nc = xr.concat([out_nc, xr.merge(results_ds)], dim='initial_time0_hours')  # Concatenate along time
+                app_logger.debug(f"Appended Xarray dataset for {datestr}")
+
 
     # Save system position as a csv file for replicability
     if not args.fixed:
@@ -304,7 +307,8 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         hovmoller_mean_zeta(results_df_dictionary['Zeta'], figures_subdirectory, app_logger)
         
     save_results_csv(results_df_dictionary, results_subdirectory, app_logger)
-    save_results_netcdf(MovingObj, results_time_step, namelist_df, stored_terms, results_subdirectory, outfile_name, app_logger)
+    if args.save_nc_file:
+        save_results_netcdf(out_nc, results_subdirectory, outfile_name, app_logger)
         
 
         
