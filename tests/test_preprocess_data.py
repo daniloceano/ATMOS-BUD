@@ -46,12 +46,12 @@ def test_preprocess_data_success(mock_slice_domain):
     assert result == data
 
     # Verifica chamadas do logger
-    app_logger.info.assert_any_call('Preprocessing data...')
-    app_logger.debug.assert_any_call('Force vertical levels to be in Pa...')
-    app_logger.debug.assert_any_call('Sorting data by longitude, vertical level and latitude...')
-    app_logger.debug.assert_any_call('Slicing data...')
-    app_logger.debug.assert_any_call('Assigning lat and lon as radians...')
-    app_logger.info.assert_any_call('Done.')
+    app_logger.info.assert_any_call('🔄 Preprocessing data...')
+    app_logger.debug.assert_any_call('🔧 Force vertical levels to be in Pa...')
+    app_logger.debug.assert_any_call('🔄 Sorting data by longitude, vertical level and latitude...')
+    app_logger.debug.assert_any_call('🔪 Slicing data...')
+    app_logger.debug.assert_any_call('🌍 Assigning lat and lon as radians...')
+    app_logger.info.assert_any_call('✅ Preprocessing done.')
 
     # Verifica se vertical_data.metpy.convert_units foi chamado com 'Pa'
     vertical_data.metpy.convert_units.assert_called_once_with('Pa')
