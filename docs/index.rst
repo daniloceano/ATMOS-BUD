@@ -15,7 +15,8 @@ Welcome to ATMOS-BUD's documentation!
    downloading_data
    running_the_program
    fixed_framework_tutorial
-   semi_lagrangian_framework_tutorial
+   track_framework_tutorial
+   interactive_framework_tutorial
    results_and_output
    contact_and_support
    license

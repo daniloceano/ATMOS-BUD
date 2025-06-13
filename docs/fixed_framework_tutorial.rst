@@ -139,7 +139,7 @@ The ``Figures/`` folder contains plots that visualize the defined analysis box a
 
 Example of a figure showing the domain at 850 hPa for August 8, 2005:
   
-  .. image:: _static/images/box_200508080000.png
+  .. image:: _static/images/box_200508080000_fixed.png
      :alt: Box defined for computations
      :width: 500px
      :align: center
@@ -153,6 +153,10 @@ The domain can be modified using the ``-l LEVEL``, ``--track-vorticity``, and ``
    * ``-l LEVEL``: Allows users to choose the pressure level for the analysis (default is 850 hPa).
    * ``--track-vorticity {min,max}``: Tracks the minimum or maximum vorticity (default is minimum).
    * ``--track_geopotential {min,max}``: Tracks the minimum or maximum geopotential height (default is minimum).
+
+NetCDF File:
+-------------
+ATMOS-BUD will generate a NetCDF file containing all the computed variables for the atmospheric budgets
 
 CSV Files:
 -------------

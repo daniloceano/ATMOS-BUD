@@ -22,6 +22,7 @@ Optional Arguments
 - ``--track_geopotential {min,max}``: Select whether to track the minimum (default) or maximum geopotential height for all tracking, diagnostics, and plots.
 - ``-g, --gfs``: Open multiple GFS files at once using the cfgrib engine.
 - ``-o OUTNAME, --outname OUTNAME``: Choose a name for saving results (default is the same as infile).
+- ``--save_nc_file``:  Wether to save the NetCDF file containing the results for each term, for the entire domain (default is True)
 - ``-v, --verbose``: Show debug messages while running.
 
 Fixed Framework
