@@ -74,19 +74,15 @@ When you run the program, you will see detailed logs in the terminal. Below is a
 
 .. code-block:: bash
 
-   2025-06-12 14:38:28,610 - atmos_bud - INFO - Loading samples/Reg1-Representative_NCEP-R2.nc...
-   2025-06-12 14:38:28,944 - atmos_bud - INFO - Loaded samples/Reg1-Representative_NCEP-R2.nc successfully!
-   2025-06-12 14:38:28,945 - atmos_bud - INFO - Preprocessing data...
-   2025-06-12 14:38:28,953 - atmos_bud - INFO - Done.
-   2025-06-12 14:38:28,953 - atmos_bud - INFO - Computing zeta and temperature tendencies...
-   2025-06-12 14:38:28,997 - atmos_bud - INFO - Done.
-   2025-06-12 14:38:28,997 - atmos_bud - INFO - Directory where results will be stored: ./Results/Reg1-Representative_NCEP-R2_fixed
-   2025-06-12 14:38:28,997 - atmos_bud - INFO - Directory where figures will be stored: ./Results/Reg1-Representative_NCEP-R2_fixed/Figures
-   2025-06-12 14:38:28,997 - atmos_bud - INFO - Name of the output file with results: Reg1-Representative_NCEP-R2_fixed
-   2025-06-12 14:38:29,008 - atmos_bud - INFO - Processing time step: 2005-08-08 00Z
-   2025-06-12 14:38:29,193 - atmos_bud - INFO - Storing results for: 2005-08-08 00Z
-   2025-06-12 14:38:29,193 - atmos_bud - INFO - 850 hPa diagnostics --> min ζ: -3.30e-05, min geopotential height: 1409, max wind speed: 15.92
-   2025-06-12 14:38:29,193 - atmos_bud - INFO - 850 hPa positions (lat/lon) --> min ζ: -25.00, -57.50, min geopotential height: -42.50, -30.00, max wind speed: -42.50, -45.00
+   2025-06-13 10:47:49,098 - atmos_bud - INFO - ⏳ Loading samples/Reg1-Representative_NCEP-R2.nc...
+   2025-06-13 10:47:49,435 - atmos_bud - INFO - ✅ Loaded samples/Reg1-Representative_NCEP-R2.nc successfully!
+   2025-06-13 10:47:49,435 - atmos_bud - INFO - 🔄 Preprocessing data...
+   2025-06-13 10:47:49,446 - atmos_bud - INFO - ✅ Preprocessing done.
+   2025-06-13 10:47:49,446 - atmos_bud - INFO - 🔄 Starting the computation of vorticity (zeta) and temperature tendencies...
+   2025-06-13 10:47:49,491 - atmos_bud - INFO - ✅ Computation completed successfully!
+   2025-06-13 10:47:49,491 - atmos_bud - INFO - Directory where results will be stored: ./Results/Reg1-Representative_NCEP-R2_fixed
+   2025-06-13 10:47:49,491 - atmos_bud - INFO - Directory where figures will be stored: ./Results/Reg1-Representative_NCEP-R2_fixed/Figures
+   2025-06-13 10:47:49,491 - atmos_bud - INFO - Name of the output file with results: Reg1-Representative_NCEP-R2_fixed
    ...
 
 Explanation of Key Terminal Outputs
@@ -97,33 +93,37 @@ Explanation of Key Terminal Outputs
   
 .. code-block:: bash
 
-   2025-06-12 14:38:28,610 - atmos_bud - INFO - Loading samples/Reg1-Representative_NCEP-R2.nc...
-   2025-06-12 14:38:28,945 - atmos_bud - INFO - Preprocessing data...
-
+   2025-06-13 10:37:37,912 - atmos_bud - INFO - ⏳ Loading samples/Reg1-Representative_NCEP-R2.nc...
+   2025-06-13 10:37:38,254 - atmos_bud - INFO - ✅ Loaded samples/Reg1-Representative_NCEP-R2.nc successfully!
+   2025-06-13 10:37:38,254 - atmos_bud - INFO - 🔄 Preprocessing data...
+   2025-06-13 10:37:38,264 - atmos_bud - INFO - ✅ Preprocessing done.
+   2025-06-13 10:37:38,265 - atmos_bud - INFO - 🔄 Starting the computation of vorticity (zeta) and temperature tendencies...
+   2025-06-13 10:37:38,309 - atmos_bud - INFO - ✅ Computation completed successfully!
 
 **Time Step Processing**:  
-   For each time step, the program calculates atmospheric diagnostics like central minimum/maximum vorticity (`ζ`) and geopotential height, and maixmum wind speed within the domain. The results for each time step are stored, and figures are created.
+   For each time step, the program calculates budget terms mean values, for each vertical level, within the domain. The results for each time step are stored, and figures are created.
 
 .. code-block:: bash
 
-   2025-06-12 14:38:29,008 - atmos_bud - INFO - Processing time step: 2005-08-08 00Z
-   2025-06-12 14:57:32,776 - atmos_bud - INFO - Storing results for: 2005-08-08 00Z
-   2025-06-12 14:57:32,776 - atmos_bud - INFO - 850 hPa diagnostics --> min ζ: -3.30e-05, min geopotential height: 1409, max wind speed: 15.92
-   2025-06-12 14:57:32,776 - atmos_bud - INFO - 850 hPa positions (lat/lon) --> min ζ: -25.00, -57.50, min geopotential height: -42.50, -30.00, max wind speed: -42.50, -45.00
+   2025-06-13 10:37:38,322 - atmos_bud - INFO - ⏳ Processing time step: 2005-08-08 00Z
+   2025-06-13 10:37:38,509 - atmos_bud - INFO - 📊 Storing results for: 2005-08-08 00Z
+   2025-06-13 10:37:38,683 - atmos_bud - INFO - 📊 Saving domain plot for 200508080000
+   2025-06-13 10:37:39,323 - atmos_bud - INFO - 📊 Created figure with box defined for computations at box_200508080000.png
 
 **Results and Figures**:  
-   The program saves figures showing the defined domain box for computations are also saved in the ``Figures/`` directory.
+   The program saves figures showing the defined domain box for computations, which are stored in the ``Figures/`` directory. The output includes visualizations for each time step, including the domain box and various atmospheric diagnostics.
 
 .. code-block:: bash
 
-   2025-06-12 14:38:29,958 - atmos_bud - INFO - Created figure with box defined for computations at box_200508080000.png
+   2025-06-13 10:37:39,323 - atmos_bud - INFO - 📊 Created figure with box defined for computations at box_200508080000.png
 
 **Completion Message**:  
    Once the analysis is complete, the program will display the total time taken for the execution.
 
 .. code-block:: bash
 
-   2025-06-12 14:38:49,711 - atmos_bud - INFO - --- 21.106063842773438 seconds for running the program ---
+   2025-06-13 10:37:59,401 - atmos_bud - INFO - 💾 ./Results/Reg1-Representative_NCEP-R2_fixed/Reg1-Representative_NCEP-R2_fixed.nc created successfully
+   2025-06-13 10:37:59,401 - atmos_bud - INFO - ⏱️ --- Total time for running the program: 21.497185945510864 seconds ---
 
 By interpreting this output, users can confirm the successful loading of data, the processing of each time step, and the generation of output files for further analysis.
 

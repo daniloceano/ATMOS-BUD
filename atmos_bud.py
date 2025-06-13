@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/06/18 10:09:03 by daniloceano       #+#    #+#              #
-#    Updated: 2025/06/11 15:30:19 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 10:20:21 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -77,18 +77,18 @@ def main():
     input_data = preprocess_data(input_data, namelist_df, args, app_logger)
 
     # Computeterms with temporal dependency
-    app_logger.info('Computing zeta and temperature tendencies...')
+    app_logger.info('🔄 Starting the computation of vorticity (zeta) and temperature tendencies...')
     dTdt =  input_data[namelist_df.loc['Air Temperature']['Variable']].differentiate(time_indexer, datetime_unit='s') * units('K/s')
     Zeta = vorticity(input_data[namelist_df.loc['Eastward Wind Component']['Variable']],
                      input_data[namelist_df.loc['Northward Wind Component']['Variable']],
                      )          
     dZdt = Zeta.differentiate(time_indexer, datetime_unit='s') / units('s')
     dQdt = input_data[namelist_df.loc['Specific Humidity']['Variable']].differentiate(time_indexer, datetime_unit='s') * units('kg/kg/s')
-    app_logger.info('Done.')
+    app_logger.info('✅ Computation completed successfully!')
 
     # Run the program
     perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_logger, *outputs)
-    app_logger.info("--- %s seconds for running the program ---" % (time.time() - start_time))
+    app_logger.info('⏱️ --- Total time for running the program: %s seconds ---' % (time.time() - start_time))
 
 if __name__ == "__main__":
     main()
