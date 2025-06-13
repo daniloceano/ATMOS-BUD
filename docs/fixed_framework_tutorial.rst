@@ -335,8 +335,8 @@ To guide the interpretation of the results, there are several studies that descr
 
 1. **Energy cycle and structural evolution of cyclones over southeastern South America**  
    *Dias Pinto, J. R., and R. P. da Rocha (2011), The energy cycle and structural evolution of cyclones over southeastern South America in three case studies, J. Geophys. Res., 116, D14112*  
-   [Read the article here](https://rmets.onlinelibrary.wiley.com/doi/full/10.1002/qj.3024)
+   `Read the article here <https://rmets.onlinelibrary.wiley.com/doi/full/10.1002/qj.3024>`_
 
 2. **Revisiting The Rare Transition of a South Atlantic Cyclone to Tropical Storm Akara**  
    *Danilo de Souza et al. (2022), Revisiting The Rare Transition of a South Atlantic Cyclone to Tropical Storm Akara: Energy Cycle and Stratosphere-Troposphere Interaction, Climate Dynamics (Preprint)*  
-   [Read the article here](https://www.researchgate.net/profile/Danilo-De-Souza-3/publication/392520451_Revisiting_The_Rare_Transition_of_a_South_Atlantic_Cyclone_to_Tropical_Storm_Akara_Energy_Cycle_and_Stratosphere-Troposphere_Interaction/links/6846cfdbc33afe388acb0190/Revisiting-The-Rare-Transition-of-a-South-Atlantic-Cyclone-to-Tropical-Storm-Akara-Energy-Cycle-and-Stratosphere-Troposphere-Interaction.pdf)
+   `Read the article here <https://www.researchgate.net/profile/Danilo-De-Souza-3/publication/392520451_Revisiting_The_Rare_Transition_of_a_South_Atlantic_Cyclone_to_Tropical_Storm_Akara_Energy_Cycle_and_Stratosphere-Troposphere_Interaction/links/6846cfdbc33afe388acb0190/Revisiting-The-Rare-Transition-of-a-South-Atlantic-Cyclone-to-Tropical-Storm-Akara-Energy-Cycle-and-Stratosphere-Troposphere-Interaction.pdf>`_
