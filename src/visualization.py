@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/01/11 16:54:18 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:44:47 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 10:37:09 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -143,7 +143,7 @@ def plot_fixed_domain(limits, data_plevel, args, results_subdirectory, time, app
 
     plt.tight_layout()
     plt.savefig(filename)
-    app_logger.info(f'\nCreated figure with box defined for computations at {os.path.basename(filename)}')    
+    app_logger.info(f'📊Created figure with box defined for computations at {os.path.basename(filename)}')    
     
 def plot_track(track, args, figures_directory, app_logger):
     """
@@ -195,10 +195,10 @@ def plot_track(track, args, figures_directory, app_logger):
         
         filename = os.path.join(figures_directory, 'track_boxes.png')
         plt.savefig(filename, bbox_inches='tight')
-        app_logger.info(f'Created figure with track and boxes defined for computations: {filename}')
+        app_logger.info(f'📍 Created figure with track and boxes defined for computations: {filename}')
     
     except Exception as e:
-        app_logger.error(f'Failed to plot track: {e}')
+        app_logger.error(f'❌  Failed to plot track: {e}')
 
 def plot_min_max_zeta_hgt(track_plotting, args, figs_dir, app_logger, max_ticks=10):
     """
@@ -246,9 +246,9 @@ def plot_min_max_zeta_hgt(track_plotting, args, figs_dir, app_logger, max_ticks=
         plt.savefig(filename, bbox_inches='tight')
         plt.close(fig)
         
-        app_logger.info(f"Time series plot created and saved: {filename}")
+        app_logger.info(f"📈 Time series plot created and saved: {filename}")
     except Exception as e:
-        app_logger.error(f"Failed to create and save time series plot: {e}")
+        app_logger.error(f"❌ Failed to create and save time series plot: {e}")
 
 from matplotlib.colors import TwoSlopeNorm
 
@@ -300,7 +300,7 @@ def hovmoller_mean_zeta(Zeta, figures_subdirectory, app_logger):
         plt.savefig(filename, bbox_inches='tight')
         plt.close(fig)
 
-        app_logger.info(f'Hovmöller diagram of mean zeta created and saved: {filename}')
+        app_logger.info(f'🌍 Hovmöller diagram of mean zeta created and saved: {filename}')
 
     except Exception as e:
-        app_logger.error(f"Failed to create Hovmöller diagram of mean zeta: {e}")
+        app_logger.error(f"❌ Failed to create Hovmöller diagram of mean zeta: {e}")

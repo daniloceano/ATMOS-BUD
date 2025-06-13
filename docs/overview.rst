@@ -6,20 +6,19 @@
 Overview
 ========
 
-The ATMOS-BUD is a comprehensive software suite designed for the calculation of heat, vorticity, and moisture balances within limited areas of the atmosphere. Initially developed for the Synoptic Meteorology III course at the Institute of Astronomy, Geophysics, and Atmospheric Sciences of the University of São Paulo, ATMOS-BUD serves as a pivotal educational and research tool for undergraduate and graduate students, as well as seasoned researchers in the field of atmospheric sciences.
+ATMOS-BUD is an advanced software suite designed for calculating heat, vorticity, and moisture balances within confined atmospheric regions. Originally developed for the Synoptic Meteorology III course at the Institute of Astronomy, Geophysics, and Atmospheric Sciences at the University of São Paulo, ATMOS-BUD serves as a key tool for both educational and research purposes. It is widely used by undergraduate and graduate students, as well as experienced researchers in atmospheric science.
 
-Crafted by doctoral student and PAE assistant Danilo Couto de Souza, under the expert guidance of professors Pedro Leite da Silva Dias and Ricardo Hallak, ATMOS-BUD stands as a testament to the intersection of academic rigor and practical application. The software adeptly processes atmospheric model and reanalysis data in NetCDF format, delivering robust outputs that include:
+Developed by doctoral student and PAE assistant Danilo Couto de Souza, under the mentorship of Professors Pedro Leite da Silva Dias and Ricardo Hallak, ATMOS-BUD embodies the fusion of academic rigor and practical application. The software efficiently processes atmospheric model and reanalysis data in NetCDF format, producing reliable outputs, including:
+- CSV files containing spatial averages of each variable involved in the equations being analyzed, across different vertical levels and time intervals.
+- A comprehensive NetCDF file that includes the spatial results for each calculated term, across all vertical levels and temporal snapshots.
 
-- CSV files encompassing spatial averages of each variable integral to the equations under study, across various vertical levels and time points.
-- A comprehensive NetCDF file containing the spatial results of each calculated term, for every vertical level and temporal snapshot.
+ATMOS-BUD is designed with flexibility in mind, offering three distinct operational frameworks to accommodate various atmospheric phenomena:
 
-ATMOS-BUD is engineered with versatility in mind, offering three distinct operational frameworks to cater to a broad spectrum of atmospheric phenomena:
+1. **Fixed Domain:** Designed for studying slowly evolving atmospheric systems, such as convergence zones, where the spatial domain remains unchanged over time.
+2. **Semi-Lagrangian Domain:** Ideal for dynamic analyses of moving systems like cyclones, this framework allows the spatial domain to follow the system's movement at each time step.
+3. **Interactive Domain:** Providing the highest level of flexibility, this framework enables users to interactively define their domain of interest at any given time, making it a powerful tool for detailed, user-driven investigations.
 
-1. **Fixed Domain:** Tailored for the study of slowly evolving atmospheric systems, such as convergence zones, where spatial domains remain constant over time.
-2. **Semi-Lagrangian Domain:** Ideal for the dynamic analysis of mobile systems like cyclones, this framework allows the spatial domain to move with the system of interest at each time step.
-3. **Interactive Domain:** Providing the ultimate flexibility, this framework enables users to interactively select their domain of interest at any given time step, making it a powerful feature for detailed, user-guided investigations.
-
-ATMOS-BUD is more than a software program—it's a gateway to understanding the complex dance of atmospheric dynamics, offering users a rich, intuitive experience for both educational exploration and advanced research.
+ATMOS-BUD is not just a software tool; it is a gateway to understanding complex atmospheric dynamics, offering users an intuitive experience for both educational exploration and advanced research.
 
 Thermodynamic Equation
 -----------------------------------------

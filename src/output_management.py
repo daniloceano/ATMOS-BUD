@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:13:36 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 10:56:27 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 10:34:17 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -71,7 +71,7 @@ def backup_file(source_path, destination_directory):
     except Exception as e:
         print(f"Error backing up file from {source_path} to {destination_directory}: {e}")
 
-def save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger):
+def save_results_netcdf(out_nc, results_subdirectory, outfile_name, app_logger):
     """
     Saves the calculation results to a NetCDF file.
 
@@ -83,14 +83,11 @@ def save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_n
     - app_logger: Logger for outputting information and error messages.
     """
     try:
-        app_logger.info('Saving results to NetCDF file...')
-        term_results = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
-        out_nc = xr.merge(term_results)
         fname = os.path.join(results_subdirectory, f'{outfile_name}.nc')
         out_nc.to_netcdf(fname, mode='w')
-        app_logger.info(f'{fname} created')
+        app_logger.info(f'💾 {fname} created successfully')
     except Exception as e:
-        app_logger.error(f"Error saving NetCDF file: {e}")
+        app_logger.error(f'❌ Error saving NetCDF file: {e}')
 
 def save_results_csv(results_df_dictionary, results_subdirectory, app_logger):
     """
@@ -121,9 +118,9 @@ def save_results_csv(results_df_dictionary, results_subdirectory, app_logger):
 
             csv_file_name = os.path.join(budget_results_subdirectory, f'{term}.csv')
             df.to_csv(csv_file_name)
-            app_logger.info(f'{csv_file_name} created')
+            app_logger.info(f'💾 {csv_file_name} created successfully')
     except Exception as e:
-        app_logger.error(f"Error saving CSV files: {e}")
+        app_logger.error(f'❌ Error saving CSV files: {e}')
 
 def save_output_track(output_track_attributes, args, results_subdirectory, figures_subdirectory, outfile_name, app_logger):
     """
@@ -142,8 +139,9 @@ def save_output_track(output_track_attributes, args, results_subdirectory, figur
         track = track.rename(columns={'central_lat': 'Lat', 'central_lon': 'Lon'})
         track_file_path = os.path.join(results_subdirectory, f'{outfile_name}_track.csv')
         track.to_csv(track_file_path, index=False, sep=";")
+        app_logger.info(f'💾 {track_file_path} created successfully')
 
         plot_track(track, args, figures_subdirectory, app_logger)
         plot_min_max_zeta_hgt(track.set_index('time'), args, figures_subdirectory, app_logger)
     except Exception as e:
-        app_logger.error(f"Error saving output track: {e}")
+        app_logger.error(f'❌ Error saving output track: {e}')

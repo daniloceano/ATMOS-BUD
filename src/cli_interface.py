@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 15:09:06 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:40:01 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 08:09:29 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -52,6 +52,8 @@ def parse_arguments(custom_args=None):
                         help="Open multiple GFS files at once using cfgrib engine.")
     parser.add_argument("-o", "--outname", default=False, type=str,
                         help="""Choose a name for saving results (default is the same as infile).""")
+    parser.add_argument("--save_nc_file",  default=True, type=bool,
+                        help="Wether to save the NetCDF file containing the results for each term, for the entire domain.")
     parser.add_argument("-v", "--verbose", action='store_true',
                         help="Show debug messages while running.")
     

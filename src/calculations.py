@@ -6,12 +6,13 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/23 11:48:34 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 10:30:11 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 from metpy.calc import wind_speed
 
@@ -159,7 +160,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         itime = str(time_step)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         datestr2 = pd.to_datetime(itime).strftime('%Y%m%d%H00')
-        app_logger.info(f'Processing time step: {datestr}')
+        app_logger.info(f'⏳ Processing time step: {datestr}')
 
         # Convert the timezone-aware timestamp 't' to a timezone-naive timestamp (still in UTC)
         t_naive = time_step.tz_localize(None)
@@ -173,6 +174,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             namelist_df=namelist_df,
             app_logger=app_logger,
             args=args)
+    
 
         # Get variables at choosen pressure level for the current time step
         iu_plevel = MovingObj.u.sel({vertical_level_indexer:plevel_Pa})
@@ -231,24 +233,26 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             NorthernLimit = float(input_data[latitude_indexer].sel({latitude_indexer: max_lat}, method='nearest'))
 
             app_logger.info(
-            f"central lat: {central_lat}, central lon: {central_lon}, "
+            f"📍 central lat: {central_lat}, central lon: {central_lon}, "
             f"size: {length} x {width}, "
             f"lon range: {min_lon} to {max_lon}, "
             f"lat range: {min_lat} to {max_lat}"
             )
 
-        app_logger.info(
-            f"{int(args.level)} hPa diagnostics --> "
+            app_logger.info(
+            f"📍 {int(args.level)} hPa diagnostics --> "
             f"{args.track_vorticity} ζ: {min_max_zeta:.2e}, "
             f"{args.track_geopotential} geopotential height: {min_max_hgt:.0f}, "
             f"max wind speed: {max_wind:.2f}"
-        )
-        app_logger.info(
-            f"{int(args.level)} hPa positions (lat/lon) --> "
+            )
+        
+            app_logger.info(
+            f"📍 {int(args.level)} hPa positions (lat/lon) --> "
             f"{args.track_vorticity} ζ: {min_max_zeta_lat:.2f}, {min_max_zeta_lon:.2f}, "
             f"{args.track_geopotential} geopotential height: {min_max_hgt_lat:.2f}, {min_max_hgt_lon:.2f}, "
             f"max wind speed: {max_wind_lat:.2f}, {max_wind_lon:.2f}")
         
+        app_logger.info(f"📊 Storing results for: {datestr}")
         for term in stored_terms:
             term_sliced = getattr(MovingObj,term).sel(
                 **{
@@ -281,15 +285,36 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             'lat': lat,
             'lon': lon,
         }
+
+        app_logger.info(f"📊 Saving domain plot for {datestr2}")
         plot_fixed_domain(current_domain_limits, dict_for_plot, args, results_subdirectory, datestr2, app_logger)
+
+        if args.save_nc_file:
+            app_logger.debug(f"💾 Storing results for the NetCDF file for {datestr}")
+            # Initializing out_nc on the first time step
+            if time_step == timesteps[0]:
+                # Create the first Dataset with the terms' variables
+                results_ds = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
+                out_nc = xr.merge(results_ds)  # Merge the initial variables
+                app_logger.debug(f"Created Xarray dataset for {datestr}")
+
+            else:
+                # For subsequent time steps, create results_ds and concatenate along the 'time' dimension
+                results_ds = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
+                # Concatenate results_ds along the 'time' dimension
+                out_nc = xr.concat([out_nc, xr.merge(results_ds)], dim='initial_time0_hours')  # Concatenate along time
+                app_logger.debug(f"Appended Xarray dataset for {datestr}")
+
 
     # Save system position as a csv file for replicability
     if not args.fixed:
         save_output_track(output_track_attributes, args, results_subdirectory, figures_subdirectory, outfile_name, app_logger)
         hovmoller_mean_zeta(results_df_dictionary['Zeta'], figures_subdirectory, app_logger)
-        
+    
+    app_logger.info(f"💾 Saving CSV results for {outfile_name}")
     save_results_csv(results_df_dictionary, results_subdirectory, app_logger)
-    save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger)
+    if args.save_nc_file:
+        save_results_netcdf(out_nc, results_subdirectory, outfile_name, app_logger)
         
 
         

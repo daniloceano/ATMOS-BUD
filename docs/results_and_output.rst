@@ -62,7 +62,7 @@ Contains individual maps for each time step at the user-selected pressure level 
 - Marks positions of the minimum or maximum vorticity, minimum or maximum geopotential height, and maximum wind speed, according to user configuration  
 - The tracked extremes (min/max) and the pressure level shown are fully customizable by the user via command-line options  
 
-Track-Related Files *(for ``track`` and ``choose`` frameworks)*
+Track-Related Files *(for track and choose frameworks)*
 ---------------------------------------------------------------
 
 - ``<input>_track_track.csv``: CSV with the complete storm track and diagnostic fields per time step, computed at the user-selected pressure level and for the chosen vorticity/geopotential height extreme (min or max) 
