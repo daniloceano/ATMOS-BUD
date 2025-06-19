@@ -47,3 +47,4 @@ jobs:
         env:
           TWINE_USERNAME: "__token__"  # Nome de usuário no PyPI para autenticação com token
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  # Usando o GitHub Secrets para o API token
+        
