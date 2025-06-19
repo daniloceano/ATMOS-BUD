@@ -47,3 +47,5 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}  # Usando o GitHub Secrets
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  # Usando o GitHub Secrets
+
+          
