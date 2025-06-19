@@ -26,7 +26,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt  # Instalar dependências de acordo com seu requirements.txt
 
-      # Etapas para execução dos testes
+      - name: Install wheel e setuptools
+        run: |
+          pip install wheel setuptools # Garantindo que o wheel e o setuptools estão instalados
+
       - name: Run tests with pytest
         run: |
           pytest  # Rodando os testes com pytest
