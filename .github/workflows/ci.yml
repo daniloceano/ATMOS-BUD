@@ -26,9 +26,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt  # Instalar dependências de acordo com seu requirements.txt
 
-      - name: Install wheel e setuptools
+      - name: Install setuptools and wheel
         run: |
-          pip install wheel setuptools # Garantindo que o wheel e o setuptools estão instalados
+          pip install setuptools wheel  # Instalar setuptools e wheel para a criação de pacotes
 
       - name: Run tests with pytest
         run: |
@@ -45,7 +45,5 @@ jobs:
           pip install twine  # Instala o Twine para o upload
           twine upload dist/*  # Faz o upload dos pacotes gerados para o PyPI
         env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}  # Usando o GitHub Secrets
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  # Usando o GitHub Secrets
-
-          
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}  # Usando o GitHub Secrets para nome de usuário
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  # Usando o GitHub Secrets para senha
