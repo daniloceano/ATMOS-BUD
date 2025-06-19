@@ -45,6 +45,5 @@ jobs:
           pip install twine  # Instala o Twine para o upload
           twine upload dist/*  # Faz o upload dos pacotes gerados para o PyPI
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}  # Usando o GitHub Secrets para nome de usuário
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  # Usando o GitHub Secrets para senha
-        
+          TWINE_USERNAME: "__token__"  # Nome de usuário no PyPI para autenticação com token
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  # Usando o GitHub Secrets para o API token
