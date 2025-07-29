@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2025/05/27 23:25:26 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/07/29 09:09:18 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -222,10 +222,10 @@ def slice_domain(input_data, args, namelist_df):
     
     if args.fixed:
         dfbox = pd.read_csv('inputs/box_limits', header=None, delimiter=';', index_col=0)
-        dfbox_min_lon = float(dfbox.loc['min_lon'].values)
-        dfbox_max_lon = float(dfbox.loc['max_lon'].values)
-        dfbox_min_lat = float(dfbox.loc['min_lat'].values)
-        dfbox_max_lat = float(dfbox.loc['max_lat'].values)
+        dfbox_min_lon = float(dfbox.loc['min_lon'].values.item())
+        dfbox_max_lon = float(dfbox.loc['max_lon'].values.item())
+        dfbox_min_lat = float(dfbox.loc['min_lat'].values.item())
+        dfbox_max_lat = float(dfbox.loc['max_lat'].values.item())
         
         # Check if dfbox limits are within input_data limits
         if (dfbox_min_lon < input_data_lon_min or dfbox_max_lon > input_data_lon_max or
