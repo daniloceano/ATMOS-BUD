@@ -25,7 +25,7 @@ ATMOS-BUD requires a dedicated Python environment to manage dependencies. We rec
 .. code-block:: bash
 
     # Create a new Conda environment named 'atmosbud'
-    conda create --name atmosbud python=3.9
+    conda create --name atmosbud python=3.10
 
     # Activate the environment
     conda activate atmosbud

@@ -2,11 +2,12 @@
 
 # ATMOS-BUD Overview
 
-[![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-390/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Version 0.1.1](https://img.shields.io/badge/version-0.1.1-green.svg)](https://github.com/daniloceano/ATMOS-BUD/releases)
+[![Test Coverage 62%](https://img.shields.io/badge/coverage-62%25-brightgreen.svg)](https://github.com/daniloceano/ATMOS-BUD)
+[![Tests 114+](https://img.shields.io/badge/tests-114+-success.svg)](https://github.com/daniloceano/ATMOS-BUD)
 ![Documentation Status](https://readthedocs.org/projects/atmos-bud//badge/?version=latest)
 ![License](https://img.shields.io/github/license/daniloceano/ATMOS-BUD)
-
-<img src="docs/_static/images/logo.jpg" alt="ATMOS-BUD Logo" width="200"/>
 
 ATMOS-BUD is a comprehensive software suite designed for calculating heat, vorticity, and moisture balances within limited areas of the atmosphere. Developed at the Institute of Astronomy, Geophysics, and Atmospheric Sciences of the University of São Paulo, it's a key tool for students and researchers in atmospheric sciences.
 
@@ -42,4 +43,3 @@ ATMOS-BUD combines academic rigor with practical application, making it a gatewa
 ### Full Documentation
 
 The full documentation for ATMOS-BUD can be found on [Read the Docs](https://atmos-bud.readthedocs.io).
-

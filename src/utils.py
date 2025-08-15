@@ -6,11 +6,12 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2025/07/29 09:09:18 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/08/15 09:30:24 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import os
+import sys
 import logging
 import numpy as np
 import pandas as pd
@@ -42,16 +43,20 @@ def initialize_logging(results_subdirectory, args):
     # Create file handler for saving logs
     log_file_name = f'log.{os.path.basename(args.infile).split(".")[0]}'
     log_file = os.path.join(results_subdirectory, log_file_name)
-    file_handler = logging.FileHandler(log_file, mode='w')
+    file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')  # Ensure file uses UTF-8
     file_handler.setLevel(app_log_level)
     file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(file_formatter)
     app_logger.addHandler(file_handler)
 
-    # Create a console handler for app logger
-    console_handler = logging.StreamHandler()
+    # Create a console handler for app logger with UTF-8 encoding
+    console_handler = logging.StreamHandler(stream=sys.stdout)  # Use sys.stdout explicitly
     console_handler.setLevel(app_log_level)
     console_handler.setFormatter(file_formatter)
+    # Set UTF-8 encoding for console output
+    if sys.platform.startswith('win'):
+        # On Windows, wrap the stream to ensure UTF-8 encoding
+        console_handler.stream = open(sys.stdout.fileno(), mode='w', encoding='utf-8', errors='replace')
     app_logger.addHandler(console_handler)
 
     return app_logger
