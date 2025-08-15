@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'ATMOS-BUD'
 copyright = '2025, Danilo Couto de Souza'
 author = 'Danilo Couto de Souza'
-release = '0.1.3'
+release = '0.1.4'
 
 # -- General configuration ---------------------------------------------------
 extensions = [
