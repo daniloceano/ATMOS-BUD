@@ -18,6 +18,7 @@ Welcome to ATMOS-BUD's documentation!
    track_framework_tutorial
    interactive_framework_tutorial
    results_and_output
+   api_reference
    contact_and_support
    license
 

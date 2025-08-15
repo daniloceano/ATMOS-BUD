@@ -15,7 +15,7 @@ def read_readme():
 
 setup(
     name='atmos-bud',
-    version='0.1.0',
+    version='0.1.1',
     description='Program for analyzing the heat, vorticity and humidity budgets of limited regions on the atmosphere.',
     long_description=read_readme(),
     long_description_content_type='text/markdown',

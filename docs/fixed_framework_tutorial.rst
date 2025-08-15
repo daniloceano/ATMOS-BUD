@@ -3,7 +3,9 @@ Fixed Framework Tutorial
 
 This section provides a comprehensive guide to using the **Fixed Framework** of ATMOS-BUD. The Fixed framework allows users to analyze the atmospheric budgets within a predefined, stationary domain. This is particularly useful for analyzing systems that do not move significantly, such as convergence zones and other localized phenomena, or even cyclones that have relatively small displacements, such as the example case used here.
 
-In this tutorial, we will use data from the **Reg1 cyclone**, which originated in the southeastern Brazil and was documented in the article *Dias Pinto, J. R., and R. P. da Rocha (2011), The energy cycle and structural evolution of cyclones over southeastern South America in three case studies, J. Geophys. Res., 116, D14112*. The data for Reg1 comes from the NCEP reanalysis and covers the period from August 8 to August 14, 2005.
+In this tutorial, we will use data from the **Reg1 cyclone**, which originated in the southeastern Brazil and was documented in the article *Dias Pinto & Rocha (2011)*. The data for Reg1 comes from the NCEP reanalysis and covers the period from August 8 to August 14, 2005.
+
+> Dias Pinto, J. R., and R. P. da Rocha (2011), The energy cycle and structural evolution of cyclones over southeastern South America in three case studies, J. Geophys. Res., 116, D14112, doi: https://doi.org/10.1029/2011JD016217.
 
 Preparing Your Environment
 *****************************
@@ -309,7 +311,7 @@ Execute the script using Python:
 
 .. code-block:: bash
 
-      python figures/map_example.py
+      python plots/map_example.py
 
 This will generate a map visualizing the chosen variable (``dTdt`` in this example), which represents the temperature tendency at the specified time and vertical level.
 
@@ -334,7 +336,7 @@ While the figures and CSV files provide valuable diagnostic information, it is i
 To guide the interpretation of the results, there are several studies that describe the physical meaning of each term in the energy, vorticity, and moisture budgets. These articles provide in-depth discussions on the physical processes at play and can serve as valuable references for understanding the results presented by ATMOS-BUD:
 
 1. **Energy cycle and structural evolution of cyclones over southeastern South America**  
-   *Dias Pinto, J. R., and R. P. da Rocha (2011), The energy cycle and structural evolution of cyclones over southeastern South America in three case studies, J. Geophys. Res., 116, D14112*  
+   *Dutra, Lívia Márcia Mosso, et al. "Structure and evolution of subtropical cyclone Anita as evaluated by heat and vorticity budgets." Quarterly Journal of the Royal Meteorological Society 143.704 (2017): 1539-1553.*
    `Read the article here <https://rmets.onlinelibrary.wiley.com/doi/full/10.1002/qj.3024>`_
 
 2. **Revisiting The Rare Transition of a South Atlantic Cyclone to Tropical Storm Akara**  
