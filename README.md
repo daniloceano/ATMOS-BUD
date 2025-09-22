@@ -3,7 +3,7 @@
 # ATMOS-BUD Overview
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Version 0.1.1](https://img.shields.io/badge/version-0.1.1-green.svg)](https://github.com/daniloceano/ATMOS-BUD/releases)
+[![Version 0.1.6](https://img.shields.io/badge/version-0.1.6-green.svg)](https://github.com/daniloceano/ATMOS-BUD/releases)
 [![Test Coverage 62%](https://img.shields.io/badge/coverage-62%25-brightgreen.svg)](https://github.com/daniloceano/ATMOS-BUD)
 [![Tests 114+](https://img.shields.io/badge/tests-114+-success.svg)](https://github.com/daniloceano/ATMOS-BUD)
 ![Documentation Status](https://readthedocs.org/projects/atmos-bud//badge/?version=latest)

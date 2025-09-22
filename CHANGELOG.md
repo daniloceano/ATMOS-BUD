@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2025-01-22
+
+### Fixed
+- Updated version badges in README.md to reflect current version (0.1.6)
+- Corrected version inconsistencies across configuration files
+- Fixed documentation links and references
+
+### Changed  
+- Updated project version from 0.1.5 to 0.1.6
+- Synchronized version numbers across setup.py, __init__.py, and documentation
+
+### Documentation
+- Updated README.md version badge from 0.1.1 to 0.1.6
+- Maintained comprehensive documentation on Read the Docs
+
+This is a maintenance release focusing on version consistency and minor documentation updates. The core functionality remains stable and fully tested with 62% test coverage across 114+ unit tests.
+
 ## [0.1.5] - 2025-08-15
 
 ### Fixed

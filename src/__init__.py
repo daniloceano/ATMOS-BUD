@@ -19,7 +19,7 @@ of limited regions in the atmosphere using reanalysis data.
 Version: 0.1.5
 """
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __author__ = "Danilo Couto de Souza"
 __email__ = "danilo.oceano@gmail.com"
 __license__ = "GPL-3.0"
