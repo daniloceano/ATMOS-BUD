@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 18:31:30 by daniloceano       #+#    #+#              #
-#    Updated: 2024/11/11 08:39:16 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/05/27 23:25:26 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -148,7 +148,7 @@ def handle_track_file(input_data, times, longitude_indexer, latitude_indexer, ap
         raise
 
 
-def find_extremum_coordinates(ds_data, lat, lon, variable):
+def find_extremum_coordinates(ds_data, lat, lon, variable, args):
     """
     Finds the indices of the extremum values for a given variable.
 
@@ -165,15 +165,21 @@ def find_extremum_coordinates(ds_data, lat, lon, variable):
     lat_values = lat.values
     lon_values = lon.values
 
-    if variable == 'min_max_zeta_850':
-        if float(lat.min()) < 0:
-            index = np.unravel_index(ds_data.argmin(), ds_data.shape)
+    if (f'{args.track_vorticity}_zeta' in variable):
+        if args.track_vorticity == "min":
+            index = np.unravel_index(np.argmin(ds_data.data), ds_data.shape)
+
         else:
-            index = np.unravel_index(ds_data.argmax(), ds_data.shape)
-    elif variable == 'min_hgt':
-        index = np.unravel_index(ds_data.argmin(), ds_data.shape)
+            index = np.unravel_index(np.argmax(ds_data.data), ds_data.shape)
+
+    elif (f'{args.track_geopotential}_hgt' in variable):
+        if args.track_geopotential == "min":
+            index = np.unravel_index(np.argmin(ds_data.data), ds_data.shape)
+        else:
+            index = np.unravel_index(np.argmax(ds_data.data), ds_data.shape)
+
     elif variable == 'max_wind':
-        index = np.unravel_index(ds_data.argmax(), ds_data.shape)
+        index = np.unravel_index(np.argmax(ds_data.data), ds_data.shape)
     else:
         raise ValueError("Invalid variable specified.")
 
@@ -204,6 +210,9 @@ def slice_domain(input_data, args, namelist_df):
     latitude_indexer = namelist_df.loc['Latitude']['Variable']
     time_indexer = namelist_df.loc['Time']['Variable']
     vertical_level_indexer = namelist_df.loc['Vertical Level']['Variable']
+
+    # Get choosen vertical level from args and convert to Pa
+    plevel_Pa = int(args.level) * 100
 
     # Input data limits
     input_data_lon_min = input_data[longitude_indexer].min().values
@@ -249,13 +258,13 @@ def slice_domain(input_data, args, namelist_df):
         NorthernLimit = track['Lat'].max()+(max_length) + 5
         
     elif args.choose:
-        iu_850 = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:85000}, method='nearest'
+        iu_plevel = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:plevel_Pa}, method='nearest'
                         )[namelist_df.loc['Eastward Wind Component']['Variable']]
-        iv_850 = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:85000}, method='nearest'
+        iv_plevel = input_data.isel({time_indexer:0}).sel({vertical_level_indexer:plevel_Pa}, method='nearest'
                         )[namelist_df.loc['Northward Wind Component']['Variable']]
-        zeta = vorticity(iu_850, iv_850).metpy.dequantify()
+        zeta = vorticity(iu_plevel, iv_plevel).metpy.dequantify()
         
-        lat, lon = iu_850[latitude_indexer], iu_850[longitude_indexer]
+        lat, lon = iu_plevel[latitude_indexer], iu_plevel[longitude_indexer]
         domain_limits = initial_domain(zeta, lat, lon)
         WesternLimit = domain_limits['min_lon']
         EasternLimit = domain_limits['max_lon']
@@ -268,54 +277,55 @@ def slice_domain(input_data, args, namelist_df):
     
     return input_data
 
-def get_domain_extreme_values(itime, args, min_lat, slices_850, track=None):
+def get_domain_extreme_values(itime, args, slices_plevel, track=None):
     """
     Retrieves or calculates extreme values (minimum/maximum vorticity, minimum geopotential height,
-    and maximum wind speed) within a specified domain at 850 hPa.
+    and maximum wind speed) within a specified domain at chosen pressure level.
 
     Parameters:
     - track (pd.DataFrame): Track data potentially containing extreme values.
     - itime (str or pd.Timestamp): The specific time step for which to retrieve or calculate extremes.
     - args (argparse.Namespace): Parsed command-line arguments indicating the slicing method.
-    - min_lat (float): The minimum latitude of the domain, used to determine calculation method for extremes.
-    - slices_850 (tuple): Tuple containing slices of vorticity, geopotential height, and wind speed at 850 hPa.
+    - slices_plevel (tuple): Tuple containing slices of vorticity, geopotential height, and wind speed at chosen pressure level.
 
     Returns:
     - tuple: Containing minimum/maximum vorticity, minimum geopotential height, and maximum wind speed.
     """
-    izeta_850_slice, ight_850_slice, iwspd_850_slice = slices_850
+    izeta_plevel_slice, ight_plevel_slice, iwspd_plevel_slice = slices_plevel
 
     if args.track:
-        # Check if 'min_max_zeta_850', 'min_hgt_850' and 'max_wind_850' columns exists in the track file.
+        # Check if 'min_max_zeta_plevel', 'min_max_hgt_plevel' and 'max_wind_plevel' columns exists in the track file.
         # If they exist, then retrieve and convert the value from the track file.  
         # If they do not exist, calculate them.
-        if 'min_max_zeta_850' in track.columns:
-            min_max_zeta = float(track.loc[itime]['min_max_zeta_850'])
+        if f'{args.track_vorticity}_zeta_{args.level}' in track.columns:
+            min_max_zeta = float(track.loc[itime][f'{args.track_vorticity}_zeta_{args.level}'])
         else:
-            lat = track.loc[itime]['Lat']
-            if float(lat) < 0:
-                min_max_zeta = float(izeta_850_slice.min())
+            if args.track_vorticity == "min":
+                min_max_zeta = float(izeta_plevel_slice.min())
             else:
-                min_max_zeta = float(izeta_850_slice.max())
+                min_max_zeta = float(izeta_plevel_slice.max())
 
-        if 'min_hgt_850' in track.columns:
-            min_hgt = float(track.loc[itime]['min_hgt_850'])
+        if f'{args.track_geopotential}_hgt_{args.level}' in track.columns:
+            min_max_hgt = float(track.loc[itime][f'{args.track_geopotential}_hgt_{args.level}'])
         else:
-            min_hgt = float(ight_850_slice.min())
+            if args.track_geopotential == "min":
+                min_max_hgt = float(ight_plevel_slice.min())
+            else:
+                min_max_hgt = float(ight_plevel_slice.max())
 
-        if 'max_wind_850' in track.columns:
-            max_wind = float(track.loc[itime]['max_wind_850'])
+        if f'max_wind_{args.level}' in track.columns:
+            max_wind = float(track.loc[itime][f'max_wind_{args.level}'])
         else:
-            max_wind = float(iwspd_850_slice.max())
+            max_wind = float(iwspd_plevel_slice.max())
     
     else:
-        if min_lat < 0:
-            min_max_zeta = float(izeta_850_slice.min())
+        if args.track_vorticity == "min":
+            min_max_zeta = float(izeta_plevel_slice.min())
 
         else:
-            min_max_zeta = float(izeta_850_slice.max())
+            min_max_zeta = float(izeta_plevel_slice.max())
 
-        min_hgt = float(ight_850_slice.min())
-        max_wind = float(iwspd_850_slice.max())
+        min_max_hgt = float(ight_plevel_slice.min())
+        max_wind = float(iwspd_plevel_slice.max())
 
-    return min_max_zeta, min_hgt, max_wind
+    return min_max_zeta, min_max_hgt, max_wind

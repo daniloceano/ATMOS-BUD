@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 15:22:52 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/17 00:12:27 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 10:31:22 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -34,7 +34,7 @@ def load_data(infile, longitude_indexer, args, app_logger):
         Exception: For any other issues encountered during data loading.
     """
     try:
-        app_logger.info(f'Loading {infile}...')
+        app_logger.info(f'⏳ Loading {infile}...')
         with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
             if args.gfs:
                 data = convert_lon(
@@ -51,14 +51,14 @@ def load_data(infile, longitude_indexer, args, app_logger):
             else:
                 data = convert_lon(xr.open_dataset(infile), longitude_indexer)
 
-        app_logger.info(f'Loaded {infile} successfully!')
+        app_logger.info(f'✅ Loaded {infile} successfully!')
         return data
 
     except FileNotFoundError:
-        app_logger.error(f'File not found: {infile}')
+        app_logger.error(f'❌ File not found: {infile}')
         raise
     except Exception as e:
-        app_logger.error(f'Failed to load data from {infile}: {e}')
+        app_logger.error(f'❌ Failed to load data from {infile}: {e}')
         raise
 
 def preprocess_data(data, df_namelist, args, app_logger):
@@ -82,31 +82,31 @@ def preprocess_data(data, df_namelist, args, app_logger):
     latitude_indexer = df_namelist.loc['Latitude']['Variable']
     vertical_level_indexer = df_namelist.loc['Vertical Level']['Variable']
 
-    app_logger.info('Preprocessing data...')
+    app_logger.info('🔄 Preprocessing data...')
 
     # Ensure critical namelist variables are present
     if not all([longitude_indexer, latitude_indexer, vertical_level_indexer]):
-        raise ValueError('Missing critical namelist variables.')
+        raise ValueError('❌ Missing critical namelist variables.')
     
     # Force vertical levels to be in Pa
-    app_logger.debug('Force vertical levels to be in Pa...')
+    app_logger.debug('🔧 Force vertical levels to be in Pa...')
     new_pressure = (data[vertical_level_indexer]).metpy.convert_units('Pa') * units('Pa')
     data = data.assign_coords({vertical_level_indexer: new_pressure})
 
     # Sort data coordinates as data from distinc sources might have different arrangements and this might affect the results from the integrations
-    app_logger.debug('Sorting data by longitude, vertical level and latitude...')
+    app_logger.debug('🔄 Sorting data by longitude, vertical level and latitude...')
     data = data.sortby(longitude_indexer).sortby(vertical_level_indexer).sortby(latitude_indexer)
 
     # Slice data so the code runs faster
-    app_logger.debug('Slicing data...')
+    app_logger.debug('🔪 Slicing data...')
     data = slice_domain(data, args, df_namelist)
     
     # Assign lat and lon as radians, for calculations
-    app_logger.debug('Assigning lat and lon as radians...')
+    app_logger.debug('🌍 Assigning lat and lon as radians...')
     data = data.assign_coords({"rlats": np.deg2rad(data[latitude_indexer])})
     data = data.assign_coords({"coslats": np.cos(np.deg2rad(data[latitude_indexer]))})
     data = data.assign_coords({"rlons": np.deg2rad(data[longitude_indexer])})
     
-    app_logger.info('Done.')
+    app_logger.info('✅ Preprocessing done.')
 
     return data

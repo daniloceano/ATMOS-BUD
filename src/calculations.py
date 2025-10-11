@@ -6,12 +6,13 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 16:42:55 by daniloceano       #+#    #+#              #
-#    Updated: 2025/04/21 10:17:23 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 10:30:11 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 from metpy.calc import wind_speed
 
@@ -143,20 +144,23 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             results_df_dictionary[term] = pd.DataFrame(columns=[str(t) for t in timesteps],
                                             index=[float(i) for i in pres_levels])
         results_nc[term] = []
+
+    # Get choosen vertical level from args and convert to Pa
+    plevel_Pa = int(args.level) * 100
         
     # Dictionary for saving track attributes for each timestep
     output_track_attributes = {}
     results_keys = ['time', 'central_lat', 'central_lon', 'length', 'width',
-            'min_max_zeta_850','min_hgt_850','max_wind_850']
+            f'{args.track_vorticity}_zeta_{args.level}', f'{args.track_geopotential}_hgt_{args.level}', f'max_wind_{args.level}']
     for key in results_keys:
         output_track_attributes[key] =  []
-    
+
     for time_step in timesteps:
         
         itime = str(time_step)
         datestr = pd.to_datetime(itime).strftime('%Y-%m-%d %HZ')
         datestr2 = pd.to_datetime(itime).strftime('%Y%m%d%H00')
-        app_logger.info(f'Processing time step: {datestr}')
+        app_logger.info(f'⏳ Processing time step: {datestr}')
 
         # Convert the timezone-aware timestamp 't' to a timezone-naive timestamp (still in UTC)
         t_naive = time_step.tz_localize(None)
@@ -170,42 +174,43 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             namelist_df=namelist_df,
             app_logger=app_logger,
             args=args)
+    
 
-        # Get variables at 850 hPa for the current time step
-        iu_850 = MovingObj.u.sel({vertical_level_indexer:85000})
-        iv_850 = MovingObj.v.sel({vertical_level_indexer:85000})
-        ight_850 = MovingObj.GeopotHeight.sel({vertical_level_indexer:85000})
-        iwspd_850 = wind_speed(iu_850, iv_850)
-        zeta = MovingObj.Zeta.sel({vertical_level_indexer:85000}).metpy.dequantify()
+        # Get variables at choosen pressure level for the current time step
+        iu_plevel = MovingObj.u.sel({vertical_level_indexer:plevel_Pa})
+        iv_plevel = MovingObj.v.sel({vertical_level_indexer:plevel_Pa})
+        ight_plevel = MovingObj.GeopotHeight.sel({vertical_level_indexer:plevel_Pa})
+        iwspd_plevel = wind_speed(iu_plevel, iv_plevel)
+        zeta = MovingObj.Zeta.sel({vertical_level_indexer:plevel_Pa}).metpy.dequantify()
         lat, lon = input_data[MovingObj.latitude_indexer], input_data[MovingObj.longitude_indexer]
 
         # Get domain limits for the current time step
-        variables_at_850hpa  = [iu_850, iv_850, zeta, ight_850, lat, lon, itime]
+        variables_at_plevel  = [iu_plevel, iv_plevel, zeta, ight_plevel, lat, lon, itime]
         if 'track' in locals() or 'track' in globals():
-            current_domain_limits = get_domain_limits(args, *variables_at_850hpa, track=track)
+            current_domain_limits = get_domain_limits(args, *variables_at_plevel, track=track)
         else:
-            current_domain_limits = get_domain_limits(args, *variables_at_850hpa)
+            current_domain_limits = get_domain_limits(args, *variables_at_plevel)
         min_lat, max_lat = current_domain_limits['min_lat'], current_domain_limits['max_lat']
         min_lon, max_lon = current_domain_limits['min_lon'], current_domain_limits['max_lon']
         central_lat, central_lon = current_domain_limits['central_lat'], current_domain_limits['central_lon']
             
         # Slice variables for the domain limits
-        izeta_850_slice = zeta.sel({latitude_indexer:slice(min_lat, max_lat), longitude_indexer:slice(min_lon, max_lon)})
-        ight_850_slice = ight_850.sel({latitude_indexer:slice(min_lat, max_lat), longitude_indexer:slice(min_lon, max_lon)})
-        iwspd_850_slice = iwspd_850.sel({latitude_indexer:slice(min_lat, max_lat), longitude_indexer:slice(min_lon, max_lon)})
+        izeta_plevel_slice = zeta.sel({latitude_indexer:slice(min_lat, max_lat), longitude_indexer:slice(min_lon, max_lon)})
+        ight_plevel_slice = ight_plevel.sel({latitude_indexer:slice(min_lat, max_lat), longitude_indexer:slice(min_lon, max_lon)})
+        iwspd_plevel_slice = iwspd_plevel.sel({latitude_indexer:slice(min_lat, max_lat), longitude_indexer:slice(min_lon, max_lon)})
 
-        # Get the extreme values at 850 hPa for the current time step
-        slices_850 = [izeta_850_slice, ight_850_slice, iwspd_850_slice]
+        # Get the extreme values at choosen pressure level for the current time step
+        slices_plevel = [izeta_plevel_slice, ight_plevel_slice, iwspd_plevel_slice]
         if 'track' in locals() or 'track' in globals():
-            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values(itime, args, min_lat, slices_850, track)
+            min_max_zeta, min_max_hgt, max_wind = get_domain_extreme_values(itime, args, slices_plevel, track)
         else:
-            min_max_zeta, min_hgt, max_wind = get_domain_extreme_values(itime, args, min_lat, slices_850)
+            min_max_zeta, min_max_hgt, max_wind = get_domain_extreme_values(itime, args, slices_plevel)
 
         # Find position of the extremes
-        lat_slice, lon_slice = izeta_850_slice[latitude_indexer], izeta_850_slice[longitude_indexer]
-        min_max_zeta_lat, min_max_zeta_lon = find_extremum_coordinates(izeta_850_slice, lat_slice, lon_slice, 'min_max_zeta_850')
-        min_hgt_lat, min_hgt_lon = find_extremum_coordinates(ight_850_slice, lat_slice, lon_slice, 'min_hgt')
-        max_wind_lat, max_wind_lon = find_extremum_coordinates(iwspd_850_slice, lat_slice, lon_slice, 'max_wind')
+        lat_slice, lon_slice = izeta_plevel_slice[latitude_indexer], izeta_plevel_slice[longitude_indexer]
+        min_max_zeta_lat, min_max_zeta_lon = find_extremum_coordinates(izeta_plevel_slice, lat_slice, lon_slice, f'{args.track_vorticity}_zeta_{args.level}', args)
+        min_max_hgt_lat, min_max_hgt_lon = find_extremum_coordinates(ight_plevel_slice, lat_slice, lon_slice, f'{args.track_geopotential}_hgt_{args.level}', args)
+        max_wind_lat, max_wind_lon = find_extremum_coordinates(iwspd_plevel_slice, lat_slice, lon_slice, 'max_wind', args)
 
         # Print results on screen
         if args.fixed:
@@ -218,7 +223,7 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
         else:
             # Store system position and attributes
             length, width = max_lat - min_lat, max_lon - min_lon
-            domain_attributes = [datestr, central_lat, central_lon, length, width, min_max_zeta, min_hgt, max_wind]
+            domain_attributes = [datestr, central_lat, central_lon, length, width, min_max_zeta, min_max_hgt, max_wind]
             for key,val in zip(results_keys, domain_attributes):
                 output_track_attributes[key].append(val)
             
@@ -228,24 +233,26 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
             NorthernLimit = float(input_data[latitude_indexer].sel({latitude_indexer: max_lat}, method='nearest'))
 
             app_logger.info(
-            f"central lat: {central_lat}, central lon: {central_lon}, "
+            f"📍 central lat: {central_lat}, central lon: {central_lon}, "
             f"size: {length} x {width}, "
             f"lon range: {min_lon} to {max_lon}, "
             f"lat range: {min_lat} to {max_lat}"
             )
 
-        app_logger.info(
-            f"850 hPa diagnostics --> "
-            f"min/max ζ: {min_max_zeta:.2e}, "
-            f"min geopotential height: {min_hgt:.0f}, "
+            app_logger.info(
+            f"📍 {int(args.level)} hPa diagnostics --> "
+            f"{args.track_vorticity} ζ: {min_max_zeta:.2e}, "
+            f"{args.track_geopotential} geopotential height: {min_max_hgt:.0f}, "
             f"max wind speed: {max_wind:.2f}"
-        )
-        app_logger.info(
-            f"850 hPa positions (lat/lon) --> "
-            f"min/max ζ: {min_max_zeta_lat:.2f}, {min_max_zeta_lon:.2f}, "
-            f"min geopotential height: {min_hgt_lat:.2f}, {min_hgt_lon:.2f}, "
+            )
+        
+            app_logger.info(
+            f"📍 {int(args.level)} hPa positions (lat/lon) --> "
+            f"{args.track_vorticity} ζ: {min_max_zeta_lat:.2f}, {min_max_zeta_lon:.2f}, "
+            f"{args.track_geopotential} geopotential height: {min_max_hgt_lat:.2f}, {min_max_hgt_lon:.2f}, "
             f"max wind speed: {max_wind_lat:.2f}, {max_wind_lon:.2f}")
         
+        app_logger.info(f"📊 Storing results for: {datestr}")
         for term in stored_terms:
             term_sliced = getattr(MovingObj,term).sel(
                 **{
@@ -260,33 +267,54 @@ def perform_calculations(input_data, namelist_df, dTdt, dZdt, dQdt, args, app_lo
 
         # Save figure with box used for computations
         dict_for_plot = {
-            'min_max_zeta_850': {
+            f'{args.track_vorticity}_zeta_{args.level}': {
                 'latitude': min_max_zeta_lat,
                 'longitude': min_max_zeta_lon,
                 'data': zeta
             },
-            'min_hgt': {
-                'latitude': min_hgt_lat,
-                'longitude': min_hgt_lon,
-                'data': ight_850
+            f'{args.track_geopotential}_hgt_{args.level}': {
+                'latitude': min_max_hgt_lat,
+                'longitude': min_max_hgt_lon,
+                'data': ight_plevel
             },
             'max_wind': {
                 'latitude': max_wind_lat,
                 'longitude': max_wind_lon,
-                'data': iwspd_850
+                'data': iwspd_plevel
             },
             'lat': lat,
             'lon': lon,
         }
-        plot_fixed_domain(current_domain_limits, dict_for_plot, results_subdirectory, datestr2, app_logger)
+
+        app_logger.info(f"📊 Saving domain plot for {datestr2}")
+        plot_fixed_domain(current_domain_limits, dict_for_plot, args, results_subdirectory, datestr2, app_logger)
+
+        if args.save_nc_file:
+            app_logger.debug(f"💾 Storing results for the NetCDF file for {datestr}")
+            # Initializing out_nc on the first time step
+            if time_step == timesteps[0]:
+                # Create the first Dataset with the terms' variables
+                results_ds = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
+                out_nc = xr.merge(results_ds)  # Merge the initial variables
+                app_logger.debug(f"Created Xarray dataset for {datestr}")
+
+            else:
+                # For subsequent time steps, create results_ds and concatenate along the 'time' dimension
+                results_ds = [getattr(MovingObj, term).metpy.dequantify().assign_attrs(units='').rename(term) for term in stored_terms]
+                # Concatenate results_ds along the 'time' dimension
+                out_nc = xr.concat([out_nc, xr.merge(results_ds)], dim='initial_time0_hours')  # Concatenate along time
+                app_logger.debug(f"Appended Xarray dataset for {datestr}")
+
 
     # Save system position as a csv file for replicability
     if not args.fixed:
-        save_output_track(output_track_attributes, results_subdirectory, figures_subdirectory, outfile_name, app_logger)
+        save_output_track(output_track_attributes, args, results_subdirectory, figures_subdirectory, outfile_name, app_logger)
         hovmoller_mean_zeta(results_df_dictionary['Zeta'], figures_subdirectory, app_logger)
-        
+    
+    app_logger.info(f"💾 Saving CSV results for {outfile_name}")
     save_results_csv(results_df_dictionary, results_subdirectory, app_logger)
-    save_results_netcdf(MovingObj, stored_terms, results_subdirectory, outfile_name, app_logger)
+    if args.save_nc_file:
+        save_results_netcdf(out_nc, results_subdirectory, outfile_name, app_logger)
         
 
         

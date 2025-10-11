@@ -6,7 +6,7 @@
 #    By: daniloceano <danilo.oceano@gmail.com>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/16 15:09:06 by daniloceano       #+#    #+#              #
-#    Updated: 2024/02/16 23:48:06 by daniloceano      ###   ########.fr        #
+#    Updated: 2025/06/13 08:09:29 by daniloceano      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -42,10 +42,18 @@ def parse_arguments(custom_args=None):
                        help="""Define the box using a track file specified by the 'inputs/track' file. The track indicates the central point of the system and an arbitrary box of 15°x15° is constructed.""")
     group.add_argument("-c", "--choose", action='store_true',
                        help="For each time step, the user can choose the domain by clicking on the screen.")
+    parser.add_argument("-l", "--level", type=int, default=850,
+                   help="Pressure level (in hPa) to show when choosing the domain (default: 850)")
+    parser.add_argument("--track_vorticity", choices=["min", "max"], default="min",
+                    help="Whether to track the minimum (default) or maximum vorticity.")
+    parser.add_argument("--track_geopotential", choices=["min", "max"], default="min",
+                    help="Whether to track the minimum (default) or maximum geopotential height.")
     parser.add_argument("-g", "--gfs", action='store_true',
                         help="Open multiple GFS files at once using cfgrib engine.")
     parser.add_argument("-o", "--outname", default=False, type=str,
                         help="""Choose a name for saving results (default is the same as infile).""")
+    parser.add_argument("--save_nc_file",  default=True, type=bool,
+                        help="Wether to save the NetCDF file containing the results for each term, for the entire domain.")
     parser.add_argument("-v", "--verbose", action='store_true',
                         help="Show debug messages while running.")
     
