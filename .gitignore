@@ -175,3 +175,8 @@ cython_debug/
 #.idea/
 
 .vscode/launch.json
+
+# Large ERA5 data files (sample/test data)
+*.nc
+system-*.nc
+*_ERA5*.nc

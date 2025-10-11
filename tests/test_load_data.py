@@ -35,8 +35,8 @@ def test_load_data_normal(mock_open_dataset, mock_convert_lon):
 
     # Testa se logger chamou info duas vezes
     assert mock_logger.info.call_count == 2
-    mock_logger.info.assert_any_call(f'Loading {infile}...')
-    mock_logger.info.assert_any_call(f'Loaded {infile} successfully!')
+    mock_logger.info.assert_any_call(f'⏳ Loading {infile}...')
+    mock_logger.info.assert_any_call(f'✅ Loaded {infile} successfully!')
 
 @patch('src.data_handling.convert_lon')
 @patch('xarray.open_mfdataset')
@@ -66,8 +66,8 @@ def test_load_data_gfs(mock_open_mfdataset, mock_convert_lon):
     assert result == 'converted_data_gfs'
 
     assert mock_logger.info.call_count == 2
-    mock_logger.info.assert_any_call(f'Loading {infile}...')
-    mock_logger.info.assert_any_call(f'Loaded {infile} successfully!')
+    mock_logger.info.assert_any_call(f'⏳ Loading {infile}...')
+    mock_logger.info.assert_any_call(f'✅ Loaded {infile} successfully!')
 
 @patch('xarray.open_dataset')
 def test_load_data_file_not_found(mock_open_dataset):
@@ -83,7 +83,7 @@ def test_load_data_file_not_found(mock_open_dataset):
         load_data(infile, longitude_indexer, args, mock_logger)
 
     # Verifica se logger registrou erro
-    mock_logger.error.assert_called_once_with(f'File not found: {infile}')
+    mock_logger.error.assert_called_once_with(f'❌ File not found: {infile}')
 
 @patch('xarray.open_dataset')
 def test_load_data_other_exception(mock_open_dataset):
