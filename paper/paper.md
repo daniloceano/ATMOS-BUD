@@ -48,3 +48,5 @@ The input file must be in NetCDF format [@rew1990netcdf], which is processed usi
 # Acknowledgements
 
 This study was partly financed by the Coordenação de Aperfeiçoamento de Pessoal de Nível Superior – Brasil (CAPES) under Finance Code 001. The authors would like to acknowledge the Laboratory of Applied Meteorology for Regional Meteorological Systems (MASTER) for the data processing infrastructure. Special thanks are extended to Jean Peres and Djalma Vieira for their invaluable technical assistance and support in the laboratory.
+
+# References
