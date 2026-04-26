@@ -41,6 +41,25 @@ from cartopy.feature import NaturalEarthFeature, COASTLINE
 from cartopy.feature import BORDERS
 from src.select_domain import plot_zeta 
 
+def get_cartopy_crs(args):
+    """
+    Return data and map coordinate reference systems.
+
+    data_crs is always PlateCarree because the data are stored as regular
+    latitude/longitude coordinates.
+
+    map_crs changes only when --keep_longitude is used. In that case, the map
+    is centered at 180° to correctly display data kept in 0–360 longitude.
+    """
+    data_crs = ccrs.PlateCarree()
+
+    if getattr(args, "keep_longitude", False):
+        map_crs = ccrs.PlateCarree(central_longitude=180)
+    else:
+        map_crs = ccrs.PlateCarree()
+
+    return data_crs, map_crs
+    
 def map_features(ax):
     """
     Adds coastline and border features to the matplotlib Axes.
@@ -95,17 +114,19 @@ def plot_fixed_domain(limits, data_plevel, args, results_subdirectory, time, app
 
     # Create figure
     plt.close('all')
-    fig, ax = plt.subplots(figsize=(8, 8.5), subplot_kw=dict(projection=ccrs.PlateCarree()))
+    
+    data_crs, map_crs = get_cartopy_crs(args)
+    fig, ax = plt.subplots(figsize=(8, 8.5), subplot_kw=dict(projection=map_crs))
 
     # Set map extent and features
-    ax.set_extent([min_lon-20, max_lon+20, max_lat+20, min_lat-20], crs=ccrs.PlateCarree())
+    ax.set_extent([min_lon-20, max_lon+20, max_lat+20, min_lat-20], crs=data_crs)
     map_features(ax)
     Brazil_states(ax, facecolor='None')
     
     # Plot selected domain
     # Create a sample polygon, `pgon`
     pgon = Polygon(((min_lon, min_lat), (min_lon, max_lat), (max_lon, max_lat), (max_lon, min_lat), (min_lon, min_lat)))
-    ax.add_geometries([pgon], crs=ccrs.PlateCarree(), facecolor='None', edgecolor='#BF3D3B', linewidth=3, alpha=1, zorder=3)
+    ax.add_geometries([pgon], crs=data_crs, facecolor='None', edgecolor='#BF3D3B', linewidth=3, alpha=1, zorder=3)
 
     # Add gridlines
     gl = ax.gridlines(draw_labels=True,zorder=2)    
@@ -123,13 +144,13 @@ def plot_fixed_domain(limits, data_plevel, args, results_subdirectory, time, app
     Brazil_states(ax, facecolor='None')
 
     # Plot central point, mininum vorticity, minimum hgt and maximum wind
-    ax.scatter(central_lon, central_lat,  marker='o', c='#31332e', s=100, zorder=4)
+    ax.scatter(central_lon, central_lat,  marker='o', c='#31332e', s=100, zorder=4, transform=data_crs)
     ax.scatter(data_plevel[f'{args.track_vorticity}_zeta_{args.level}']['longitude'], data_plevel[f'{args.track_vorticity}_zeta_{args.level}']['latitude'],
-                marker='s', c='#31332e', s=100, zorder=4, label=f'{args.track_vorticity} zeta')
+                marker='s', c='#31332e', s=100, zorder=4, label=f'{args.track_vorticity} zeta', transform=data_crs)
     ax.scatter(data_plevel[f'{args.track_geopotential}_hgt_{args.level}']['longitude'], data_plevel[f'{args.track_geopotential}_hgt_{args.level}']['latitude'],
-                marker='x', c='#31332e', s=100, zorder=4, label=f'{args.track_geopotential} hgt')
+                marker='x', c='#31332e', s=100, zorder=4, label=f'{args.track_geopotential} hgt', transform=data_crs)
     ax.scatter(data_plevel['max_wind']['longitude'], data_plevel['max_wind']['latitude'],
-                marker='^', c='#31332e', s=100, zorder=4, label='max wind')
+                marker='^', c='#31332e', s=100, zorder=4, label='max wind', transform=data_crs)
     plt.legend(loc='upper left', frameon=True, fontsize=14, bbox_to_anchor=(1.1,1.2))
 
     # Save figure
@@ -167,10 +188,12 @@ def plot_track(track, args, figures_directory, app_logger):
         min_lat, max_lat = track['Lat'].min(), track['Lat'].max()
         
         plt.close('all')
-        fig, ax = plt.subplots(figsize=(12, 9) if (max_lon - min_lon) <= (max_lat - min_lat) else (14, 9), 
-                               subplot_kw={"projection": ccrs.PlateCarree()})
         
-        ax.set_extent([min_lon - 10, max_lon + 10, min_lat - 10, max_lat + 10], crs=ccrs.PlateCarree())
+        data_crs, map_crs = get_cartopy_crs(args)
+        fig, ax = plt.subplots(figsize=(12, 9) if (max_lon - min_lon) <= (max_lat - min_lat) else (14, 9), 
+                               subplot_kw={"projection": map_crs})
+        
+        ax.set_extent([min_lon - 10, max_lon + 10, min_lat - 10, max_lat + 10], crs=data_crs)
         ax.coastlines()
         ax.add_feature(cartopy.feature.LAND)
         ax.add_feature(cartopy.feature.OCEAN, facecolor="lightblue")
@@ -179,19 +202,19 @@ def plot_track(track, args, figures_directory, app_logger):
         gl.top_labels = gl.right_labels = False
         
         # Plotting the track
-        ax.plot(track['Lon'], track['Lat'], color='#383838')
+        ax.plot(track['Lon'], track['Lat'], color='#383838', transform=data_crs)
         
         # Enhanced visualization with normalized wind speed and vorticity
         if f'{args.track_vorticity}_zeta_{args.level}' in track and f'max_wind_{args.level}' in track:
             normalized_sizes = normalize(track[[f'max_wind_{args.level}']].values.reshape(1, -1))**4 * 100000
             scatter = ax.scatter(track['Lon'], track['Lat'], zorder=3, c=track[f'{args.track_vorticity}_zeta_{args.level}'].values, 
                                  cmap=cmo.deep_r, edgecolor='gray', s=normalized_sizes.flatten(), 
-                                 label=f'Normalized max wind speed at {args.level} hPa')
+                                 label=f'Normalized max wind speed at {args.level} hPa', transform=data_crs)
             plt.colorbar(scatter, pad=0.1, orientation='vertical', shrink=0.5, label=f'{args.track_vorticity} vorticity')
         
         # Marking the start and end points
-        ax.text(track.iloc[0]['Lon'], track.iloc[0]['Lat'], 'A', fontsize=12, ha='center', va='center', color='green')
-        ax.text(track.iloc[-1]['Lon'], track.iloc[-1]['Lat'], 'Z', fontsize=12, ha='center', va='center', color='red')
+        ax.text(track.iloc[0]['Lon'], track.iloc[0]['Lat'], 'A', fontsize=12, ha='center', va='center', color='green', transform=data_crs)
+        ax.text(track.iloc[-1]['Lon'], track.iloc[-1]['Lat'], 'Z', fontsize=12, ha='center', va='center', color='red', transform=data_crs)
         
         filename = os.path.join(figures_directory, 'track_boxes.png')
         plt.savefig(filename, bbox_inches='tight')
