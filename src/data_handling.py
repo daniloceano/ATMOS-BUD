@@ -48,7 +48,7 @@ def load_data(infile, longitude_indexer, args, app_logger):
             else:
                 data = xr.open_dataset(infile)
             
-            if not args.keep_longitude:
+            if not getattr(args, "keep_longitude", False):
                 data = convert_lon(data, longitude_indexer)
             else:
                 app_logger.info('Keeping original longitude convention from input file')
