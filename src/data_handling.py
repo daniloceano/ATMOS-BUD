@@ -37,19 +37,21 @@ def load_data(infile, longitude_indexer, args, app_logger):
         app_logger.info(f'⏳ Loading {infile}...')
         with dask.config.set(array={'slicing': {'split_large_chunks': True}}):
             if args.gfs:
-                data = convert_lon(
-                    xr.open_mfdataset(
+                data = xr.open_mfdataset(
                         infile,
                         engine='cfgrib',
                         parallel=True,
                         filter_by_keys={'typeOfLevel': 'isobaricInhPa'},
                         combine='nested',
                         concat_dim='time'
-                    ),
-                    longitude_indexer
-                )
+                    )
             else:
-                data = convert_lon(xr.open_dataset(infile), longitude_indexer)
+                data = xr.open_dataset(infile)
+            
+            if not getattr(args, "keep_longitude", False):
+                data = convert_lon(data, longitude_indexer)
+            else:
+                app_logger.info('Keeping original longitude convention from input file')
 
         app_logger.info(f'✅ Loaded {infile} successfully!')
         return data

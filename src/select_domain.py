@@ -31,7 +31,24 @@ import cmocean.cm as cmo
 import matplotlib.ticker as ticker
 
 nclicks = 2
-crs_longlat = ccrs.PlateCarree() 
+
+# CRS used by the input data.
+# This should remain PlateCarree() because the data coordinates themselves
+# are still regular latitude/longitude coordinates.
+data_crs = ccrs.PlateCarree()
+
+def get_map_crs(args=None):
+    """
+    Return the map projection.
+
+    If --keep_longitude is used, the input data may remain in 0–360 longitude.
+    In this case, centering the map at 180 degrees avoids dateline-related
+    plotting artifacts in Cartopy.
+    """
+    if args is not None and getattr(args, "keep_longitude", False):
+        return ccrs.PlateCarree(central_longitude=180)
+
+    return ccrs.PlateCarree()
 
 # Transformation function
 def coordXform(orig_crs, target_crs, x, y):
@@ -73,7 +90,7 @@ def fmt(x, pos):
     b = int(b)
     return r'${} \times 10^{{{}}}$'.format(a, b)
     
-def draw_box(ax, limits, crs):
+def draw_box(ax, limits, crs=data_crs):
     """
     Draws a rectangular box on the plot based on specified limits.
 
@@ -87,7 +104,7 @@ def draw_box(ax, limits, crs):
     pgon = Polygon([(min_lon, min_lat), (min_lon, max_lat), (max_lon, max_lat), (max_lon, min_lat), (min_lon, min_lat)])
     ax.add_geometries([pgon], crs=crs, facecolor='None', edgecolor='k', linewidth=3, alpha=1, zorder=3)
 
-def plot_zeta(ax, zeta, lat, lon, hgt=None):
+def plot_zeta(ax, zeta, lat, lon, hgt=None, crs=data_crs):
     """
     Plots the vorticity field and optionally the geopotential height.
 
@@ -100,10 +117,10 @@ def plot_zeta(ax, zeta, lat, lon, hgt=None):
     """
     norm = colors.TwoSlopeNorm(vmin=min(-zeta.max(), zeta.min()), vcenter=0, vmax=max(zeta.max(), -zeta.min()))
     cmap = cmo.balance
-    cf1 = ax.contourf(lon, lat, zeta, cmap=cmap, norm=norm, levels=51, transform=crs_longlat) 
+    cf1 = ax.contourf(lon, lat, zeta, cmap=cmap, norm=norm, levels=51, transform=data_crs) 
     plt.colorbar(cf1, pad=0.1, orientation='vertical', shrink=0.5, format=ticker.FuncFormatter(fmt))
     if hgt is not None:
-        cs = ax.contour(lon, lat, hgt, levels=11, colors='#747578', linestyles='dashed', linewidths=1, transform=crs_longlat)
+        cs = ax.contour(lon, lat, hgt, levels=11, colors='#747578', linestyles='dashed', linewidths=1, transform=crs)
         ax.clabel(cs, cs.levels, inline=True, fontsize=10)
     
 def map_decorators(ax):
@@ -150,18 +167,18 @@ def plot_min_max_zeta(ax, zeta, lat, lon, limits, args):
                 for point in points:
                     ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
                            marker='o', facecolors='none', linewidth=3,
-                           edgecolor='k',  s=200)
+                           edgecolor='k',  s=200, transform=data_crs)
         else:
             for point in min_max_zeta_loc:
                 ax.scatter(point[lon.dims[0]], point[lat.dims[0]],
                        marker='o', facecolors='none', linewidth=3,
-                       edgecolor='k',  s=200)
+                       edgecolor='k',  s=200, transform=data_crs)
     else:
         ax.scatter(min_max_zeta_loc[lon.dims[0]], min_max_zeta_loc[lat.dims[0]],
                marker='o', facecolors='none', linewidth=3,
-               edgecolor='k',  s=200)
+               edgecolor='k',  s=200, transform=data_crs)
 
-def initial_domain(zeta, lat, lon):
+def initial_domain(zeta, lat, lon, args=None):
     """
     Interactively selects an initial spatial domain on a map.
 
@@ -175,10 +192,11 @@ def initial_domain(zeta, lat, lon):
     """
     plt.close('all')
     fig = plt.figure(figsize=(10, 8))
-    ax = plt.axes(projection=crs_longlat)
+    map_crs = get_map_crs(args)
+    ax = plt.axes(projection=map_crs)
     fig.add_axes(ax)
     ax.set_global()
-    plot_zeta(ax, zeta, lat, lon)
+    plot_zeta(ax, zeta, lat, lon, crs=data_crs)
     map_decorators(ax)
     plt.subplots_adjust(bottom=0, top=1.2)
     
@@ -195,13 +213,15 @@ def initial_domain(zeta, lat, lon):
         xmin,xmax = min([pts[0,0],pts[1,0]]),max([pts[0,0],pts[1,0]])
         ymin,ymax = min([pts[0,1],pts[1,1]]),max([pts[0,1],pts[1,1]])
         xs, ys = np.array((xmin,xmax)), np.array((ymin,ymax))
-        lls = coordXform(crs_longlat, crs_longlat, xs, ys)
+        lls = coordXform(map_crs, data_crs, xs, ys)
+        if args is not None and getattr(args, "keep_longitude", False):
+            lls[:, 0] = lls[:, 0] % 360
         min_lon,min_lat = lls[0,0], lls[0,1]
         max_lon, max_lat = lls[1,0], lls[1,1]
         
         limits = {'min_lon':min_lon,'max_lon':max_lon,
                 'min_lat':min_lat, 'max_lat':max_lat}
-        draw_box(ax, limits, crs_longlat)
+        draw_box(ax, limits, data_crs)
         
         tellme('Happy? Key press any keyboard key for yes, mouse click for no')
         if plt.waitforbuttonpress():
@@ -228,12 +248,13 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr, args):
     """
     plt.close('all')
     fig = plt.figure(figsize=(10, 8))
-    ax = plt.axes(projection=crs_longlat)
+    map_crs = get_map_crs(args)
+    ax = plt.axes(projection=map_crs)
     fig.add_axes(ax)
     
-    plot_zeta(ax, zeta, lat, lon, hgt)
+    plot_zeta(ax, zeta, lat, lon, hgt, crs=data_crs)
     ax.streamplot(lon.values, lat.values, u.values, v.values, color='#2A1D21',
-              transform=crs_longlat)
+              transform=data_crs)
     map_decorators(ax)
 
     # Convert to datetime object
@@ -257,13 +278,15 @@ def draw_box_map(u, v, zeta, hgt, lat, lon, timestr, args):
         xmin,xmax = min([pts[0,0],pts[1,0]]),max([pts[0,0],pts[1,0]])
         ymin,ymax = min([pts[0,1],pts[1,1]]),max([pts[0,1],pts[1,1]])
         xs, ys = np.array((xmin,xmax)), np.array((ymin,ymax))
-        lls = coordXform(crs_longlat, crs_longlat, xs, ys)
+        lls = coordXform(map_crs, data_crs, xs, ys)
+        if getattr(args, "keep_longitude", False):
+            lls[:, 0] = lls[:, 0] % 360
         min_lon,min_lat = lls[0,0], lls[0,1]
         max_lon, max_lat = lls[1,0], lls[1,1]
                 
         limits = {'min_lon':min_lon,'max_lon':max_lon,
                 'min_lat':min_lat, 'max_lat':max_lat}
-        draw_box(ax, limits, crs_longlat)
+        draw_box(ax, limits, data_crs)
         plot_min_max_zeta(ax, zeta, lat, lon, limits, args)
     
         tellme('Happy? Key press any keyboard key for yes, mouse click for no')

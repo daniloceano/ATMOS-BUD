@@ -35,6 +35,10 @@ def parse_arguments(custom_args=None):
     parser.add_argument("infile", 
                         help="""Input .nc file with temperature, specific humidity and meridional, zonal, and vertical components of the wind, in pressure levels.""")
     
+    parser.add_argument("--keep_longitude",
+                        action="store_true",
+                        help="Keep original longitude convention from input file. If not used, longitudes are converted from 0–360 to -180–180.")
+    
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-f", "--fixed", action='store_true',
                        help="Compute the energetics for a Fixed domain specified by the 'inputs/box_limits' file.")

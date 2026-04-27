@@ -61,6 +61,7 @@ def initialize_logging(results_subdirectory, args):
 
     return app_logger
 
+
 def convert_lon(input_data, longitude_indexer):
     """
     
@@ -82,6 +83,7 @@ def convert_lon(input_data, longitude_indexer):
     input_data.coords[longitude_indexer] = (input_data.coords[longitude_indexer] + 180) % 360 - 180
     input_data = input_data.sortby(input_data[longitude_indexer])
     return input_data
+
 
 def handle_track_file(input_data, times, longitude_indexer, latitude_indexer, app_logger):
     """
@@ -270,7 +272,7 @@ def slice_domain(input_data, args, namelist_df):
         zeta = vorticity(iu_plevel, iv_plevel).metpy.dequantify()
         
         lat, lon = iu_plevel[latitude_indexer], iu_plevel[longitude_indexer]
-        domain_limits = initial_domain(zeta, lat, lon)
+        domain_limits = initial_domain(zeta, lat, lon, args)
         WesternLimit = domain_limits['min_lon']
         EasternLimit = domain_limits['max_lon']
         SouthernLimit = domain_limits['min_lat']
